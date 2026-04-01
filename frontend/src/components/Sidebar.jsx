@@ -18,7 +18,7 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
         </div>
       </div>
 
-      <Button className="mb-6 w-full justify-center" onClick={onCompose}>
+      <Button className="mb-6 min-h-12 w-full justify-center" onClick={onCompose}>
         <Plus size={16} />
         New update
       </Button>

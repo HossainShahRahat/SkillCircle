@@ -1,5 +1,7 @@
 import { repository } from '../models/repository.js';
 import { createImageUrl } from '../services/storageService.js';
+import { resolveMentions } from '../services/mentionService.js';
+import { emitGlobal, emitToCircle, emitToUser } from '../services/socketServer.js';
 
 function badRequest(message) {
   const error = new Error(message);
@@ -32,6 +34,11 @@ export async function createPost(req, res, next) {
       circleId: circleId || null,
     });
 
+    emitGlobal('new_post', { post });
+    if (post.circle_id) {
+      emitToCircle(post.circle_id, 'new_post', { post });
+    }
+
     res.status(201).json({ post });
   } catch (error) {
     next(error);
@@ -42,12 +49,13 @@ export async function toggleLike(req, res, next) {
   try {
     const result = await repository.toggleLike(req.params.postId, req.user.id);
     if (result.notificationTargetUserId) {
-      await repository.createNotification({
+      const notification = await repository.createNotification({
         userId: result.notificationTargetUserId,
         type: 'like',
         referenceId: req.params.postId,
         triggeredBy: req.user.id,
       });
+      emitToUser(result.notificationTargetUserId, 'new_notification', { notification });
     }
     res.json(result);
   } catch (error) {
@@ -62,14 +70,44 @@ export async function addComment(req, res, next) {
       throw badRequest('Comment content is required.');
     }
 
-    const comment = await repository.addComment(req.params.postId, req.user.id, content.trim());
+    const post = await repository.getPostById(req.params.postId, req.user.id);
+    const activeMembers = post?.circle_id
+      ? await repository.listCircleMembers(post.circle_id, req.user.id)
+      : [];
+    const mentionedUsers = resolveMentions(content.trim(), activeMembers);
+    const comment = await repository.addComment(
+      req.params.postId,
+      req.user.id,
+      content.trim(),
+      mentionedUsers.map((user) => user.id),
+    );
+
     if (comment.notificationTargetUserId) {
-      await repository.createNotification({
+      const notification = await repository.createNotification({
         userId: comment.notificationTargetUserId,
         type: 'comment',
         referenceId: req.params.postId,
         triggeredBy: req.user.id,
       });
+      emitToUser(comment.notificationTargetUserId, 'new_notification', { notification });
+    }
+    await Promise.all(
+      mentionedUsers
+        .filter((mentionedUser) => mentionedUser.id !== req.user.id && mentionedUser.id !== comment.notificationTargetUserId)
+        .map(async (mentionedUser) => {
+          const notification = await repository.createNotification({
+            userId: mentionedUser.id,
+            type: 'mention',
+            referenceId: req.params.postId,
+            triggeredBy: req.user.id,
+          });
+          emitToUser(mentionedUser.id, 'new_notification', { notification });
+          emitToUser(mentionedUser.id, 'new_mention', { notification });
+        }),
+    );
+    emitGlobal('new_comment', { postId: req.params.postId, comment });
+    if (post?.circle_id) {
+      emitToCircle(post.circle_id, 'new_comment', { postId: req.params.postId, comment });
     }
     res.status(201).json({ comment });
   } catch (error) {

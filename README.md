@@ -26,6 +26,7 @@ It is designed as a focused social product, not a general-purpose network. The e
 - Likes and comments on posts
 - Skill Circles for community creation, joining, and circle-specific posting
 - Light and dark mode with a consistent product-style UI
+- Real-time feed, comments, notifications, and circle chat with Socket.io
 
 ## Project Structure
 
@@ -147,16 +148,19 @@ SkillCircle/
 ### Frontend
 
 - `VITE_API_URL`: backend API base URL
+- `VITE_SOCKET_URL`: backend websocket base URL
 
 ### Backend
 
 - `PORT`: Express server port
 - `CLIENT_URL`: frontend origin for CORS
+- `CLIENT_URLS`: comma-separated allowed frontend origins for production deployments
 - `JWT_SECRET`: signing secret for JWT auth
 - `SUPABASE_URL`: Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key
 - `STORAGE_MODE`: `simulated` by default
 - `R2_PUBLIC_BASE_URL`: public base URL for generated asset links
+- `NODE_ENV`: runtime mode
 
 ## Demo Login
 
@@ -204,6 +208,7 @@ npm run dev:frontend
 - The backend can run without Supabase and will seed demo users, circles, posts, likes, and comments in memory.
 - The seeded data resets whenever the backend restarts in simulated mode.
 - The frontend expects the backend at `http://localhost:4000/api` unless overridden in `frontend/.env`.
+- The socket client expects the backend websocket server at `http://localhost:4000` unless overridden in `frontend/.env`.
 
 ## Build Verification
 
@@ -211,6 +216,41 @@ npm run dev:frontend
 npm run build --workspace backend
 npm run build --workspace frontend
 ```
+
+## Deployment
+
+### Suggested Stack
+
+- Frontend: Vercel
+- Backend: Render or Railway
+- Database: Supabase
+
+### Frontend Deployment Notes
+
+- Set `VITE_API_URL` to your deployed backend API URL, for example `https://skillcircle-api.onrender.com/api`
+- Set `VITE_SOCKET_URL` to your deployed backend base URL, for example `https://skillcircle-api.onrender.com`
+- Build command: `npm run build --workspace frontend`
+- Output directory: `frontend/dist`
+
+### Backend Deployment Notes
+
+- Deploy the `backend` workspace as a Node service
+- Start command: `npm run start --workspace backend`
+- Set `CLIENT_URLS` to a comma-separated list of allowed frontend origins
+- Set `JWT_SECRET`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`
+- If using simulated storage, keep `STORAGE_MODE=simulated`; otherwise wire a real CDN or R2 flow
+
+### Supabase Notes
+
+- Run the latest [schema.sql](./backend/supabase/schema.sql) before production deploys
+- The schema now includes notifications and circle chat messages
+
+## Real-Time Events
+
+- `new_post`
+- `new_comment`
+- `new_notification`
+- `new_message`
 
 ## Suggested Next Steps
 

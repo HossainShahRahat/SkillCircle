@@ -8,6 +8,7 @@ function notificationMessage(notification) {
   const actor = notification.actor?.name || 'Someone';
   if (notification.type === 'like') return `${actor} liked your post`;
   if (notification.type === 'comment') return `${actor} commented on your post`;
+  if (notification.type === 'mention') return `${actor} mentioned you in a comment`;
   return `${actor} joined your circle`;
 }
 
@@ -46,7 +47,7 @@ export function NotificationBell() {
       </Button>
 
       {open ? (
-        <div className="surface-card absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[360px] p-4">
+        <div className="surface-card absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[min(360px,calc(100vw-2rem))] p-4">
           <div className="mb-3">
             <p className="text-base font-bold">Notifications</p>
             <p className="muted-copy">Activity around your posts and circles.</p>

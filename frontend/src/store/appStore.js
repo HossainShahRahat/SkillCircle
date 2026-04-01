@@ -15,6 +15,8 @@ export const useAppStore = create((set, get) => ({
   notificationsLoading: false,
   searchResults: { users: [], circles: [] },
   searchLoading: false,
+  messages: [],
+  messagesLoading: false,
   async loadFeed(circleId = null) {
     set({ loadingFeed: true, error: '' });
     try {
@@ -198,6 +200,56 @@ export const useAppStore = create((set, get) => ({
   },
   clearSearch() {
     set({ searchResults: { users: [], circles: [] }, searchLoading: false });
+  },
+  async loadMessages(circleId) {
+    set({ messagesLoading: true });
+    try {
+      const data = await api.get(`/messages/${circleId}`);
+      set({ messages: data.messages, messagesLoading: false });
+    } catch (error) {
+      set({ messagesLoading: false, error: error.message });
+    }
+  },
+  async sendMessage(circleId, content) {
+    const data = await api.post('/messages', { circleId, content });
+    if (!get().messages.some((message) => message.id === data.message.id)) {
+      set({ messages: [...get().messages, data.message] });
+    }
+    return data.message;
+  },
+  ingestRealtimePost(post) {
+    const activeCircleId = get().activeCircle?.id || null;
+    const shouldInclude = !activeCircleId || post.circle_id === activeCircleId;
+    if (!shouldInclude) return;
+    if (get().posts.some((item) => item.id === post.id)) return;
+    set({ posts: [post, ...get().posts] });
+  },
+  ingestRealtimeComment(postId, comment) {
+    set({
+      posts: get().posts.map((post) => {
+        if (post.id !== postId) return post;
+        if (post.comments.some((item) => item.id === comment.id)) return post;
+        return {
+          ...post,
+          comments: [...post.comments, comment],
+          commentsCount: post.commentsCount + 1,
+        };
+      }),
+    });
+  },
+  ingestRealtimeNotification(notification) {
+    if (!notification) return;
+    if (get().notifications.some((item) => item.id === notification.id)) return;
+    set({ notifications: [notification, ...get().notifications] });
+    get().showToast('New activity just came in.');
+  },
+  ingestRealtimeMessage(message) {
+    if (!message) return;
+    if (get().messages.some((item) => item.id === message.id)) return;
+    set({ messages: [...get().messages, message] });
+  },
+  clearMessages() {
+    set({ messages: [], messagesLoading: false });
   },
   setModalOpen(modalOpen) {
     set({ modalOpen });

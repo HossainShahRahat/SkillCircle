@@ -4,10 +4,12 @@ import {
   demoCircles,
   demoComments,
   demoLikes,
+  demoMessages,
   demoNotifications,
   demoPosts,
   demoUsers,
 } from '../services/seedData.js';
+import { buildMentionPayload } from '../services/mentionService.js';
 
 function publicUser(user) {
   if (!user) return null;
@@ -23,6 +25,9 @@ function enrichPost(post, users, circles, comments, likes, currentUserId) {
     .map((comment) => ({
       ...comment,
       author: publicUser(users.find((user) => user.id === comment.user_id)),
+      mentionedUsers: buildMentionPayload(
+        users.filter((user) => (comment.mentioned_users || []).includes(user.id)),
+      ),
     }))
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const postLikes = likes.filter((like) => like.post_id === post.id);
@@ -73,6 +78,15 @@ function serializeNotification(notification, users, posts, circles) {
   };
 }
 
+function serializeCircleMember(member, users) {
+  const user = users.find((item) => item.id === member.user_id);
+  if (!user) return null;
+  return {
+    ...publicUser(user),
+    role: member.role,
+  };
+}
+
 function profileStats(userId, posts, likes, circleMembers) {
   const userPosts = posts.filter((post) => post.user_id === userId);
   return {
@@ -82,11 +96,19 @@ function profileStats(userId, posts, likes, circleMembers) {
   };
 }
 
+function serializeMessage(message, users) {
+  return {
+    ...message,
+    author: publicUser(users.find((user) => user.id === message.user_id)),
+  };
+}
+
 export function createMemoryRepository() {
   const users = structuredClone(demoUsers);
   const posts = structuredClone(demoPosts);
   const comments = structuredClone(demoComments);
   const likes = structuredClone(demoLikes);
+  const messages = structuredClone(demoMessages);
   const notifications = structuredClone(demoNotifications);
   const circles = structuredClone(demoCircles);
   const circleMembers = structuredClone(demoCircleMembers);
@@ -153,6 +175,24 @@ export function createMemoryRepository() {
       posts.unshift(post);
       return enrichPost(post, users, circles, comments, likes, userId);
     },
+    async getPostById(postId, currentUserId) {
+      const post = posts.find((item) => item.id === postId);
+      if (!post) return null;
+      return enrichPost(post, users, circles, comments, likes, currentUserId);
+    },
+    async listCircleMembers(circleId, userId) {
+      const circle = circles.find((item) => item.id === circleId);
+      if (!circle) return [];
+      const isMember = Boolean(getMembership(circleMembers, circleId, userId));
+      if (circle.is_private && !isMember) {
+        return [];
+      }
+
+      return circleMembers
+        .filter((member) => member.circle_id === circleId)
+        .map((member) => serializeCircleMember(member, users))
+        .filter(Boolean);
+    },
     async toggleLike(postId, userId) {
       const post = posts.find((item) => item.id === postId);
       const existing = likes.find((like) => like.post_id === postId && like.user_id === userId);
@@ -172,19 +212,23 @@ export function createMemoryRepository() {
         notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
       };
     },
-    async addComment(postId, userId, content) {
+    async addComment(postId, userId, content, mentionedUserIds = []) {
       const post = posts.find((item) => item.id === postId);
       const comment = {
         id: `co_${nanoid(10)}`,
         user_id: userId,
         post_id: postId,
         content,
+        mentioned_users: mentionedUserIds,
         created_at: new Date().toISOString(),
       };
       comments.push(comment);
       return {
         ...comment,
         author: publicUser(users.find((user) => user.id === userId)),
+        mentionedUsers: buildMentionPayload(
+          users.filter((user) => mentionedUserIds.includes(user.id)),
+        ),
         notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
       };
     },
@@ -290,12 +334,19 @@ export function createMemoryRepository() {
         return {
           ...serializeCircle(circle, circleMembers, userId),
           invite_code: null,
+          members: [],
         };
       }
 
       return {
         ...serializeCircle(circle, circleMembers, userId),
         invite_code: membership?.role === 'admin' ? circle.invite_code : null,
+        members: membership
+          ? circleMembers
+            .filter((member) => member.circle_id === circle.id)
+            .map((member) => serializeCircleMember(member, users))
+            .filter(Boolean)
+          : [],
       };
     },
     async createNotification({ userId, type, referenceId, triggeredBy }) {
@@ -344,6 +395,42 @@ export function createMemoryRepository() {
         users: matchedUsers,
         circles: matchedCircles,
       };
+    },
+    async listMessages(circleId, userId) {
+      const circle = circles.find((item) => item.id === circleId);
+      if (!circle) return [];
+      const isMember = Boolean(getMembership(circleMembers, circleId, userId));
+      if (circle.is_private && !isMember) {
+        return [];
+      }
+
+      return messages
+        .filter((message) => message.circle_id === circleId)
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map((message) => serializeMessage(message, users));
+    },
+    async createMessage({ circleId, userId, content }) {
+      const circle = circles.find((item) => item.id === circleId);
+      if (!circle) {
+        const error = new Error('Circle not found.');
+        error.status = 404;
+        throw error;
+      }
+      if (!getMembership(circleMembers, circleId, userId)) {
+        const error = new Error('Join the circle before sending messages.');
+        error.status = 403;
+        throw error;
+      }
+
+      const message = {
+        id: `m_${nanoid(10)}`,
+        circle_id: circleId,
+        user_id: userId,
+        content,
+        created_at: new Date().toISOString(),
+      };
+      messages.push(message);
+      return serializeMessage(message, users);
     },
   };
 }

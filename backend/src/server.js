@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import morgan from 'morgan';
 import { config } from './config.js';
@@ -8,14 +9,25 @@ import { postRoutes } from './routes/postRoutes.js';
 import { circleRoutes } from './routes/circleRoutes.js';
 import { notificationRoutes } from './routes/notificationRoutes.js';
 import { searchRoutes } from './routes/searchRoutes.js';
+import { messageRoutes } from './routes/messageRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { attachCurrentUser } from './middleware/authMiddleware.js';
+import { initializeSocketServer } from './services/socketServer.js';
 
 const app = express();
+const httpServer = http.createServer(app);
+
+function resolveOrigin(origin, callback) {
+  if (!origin || config.clientUrls.includes(origin)) {
+    callback(null, true);
+    return;
+  }
+  callback(new Error('CORS origin not allowed.'));
+}
 
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: resolveOrigin,
     credentials: true,
   }),
 );
@@ -33,9 +45,12 @@ app.use('/api/posts', postRoutes);
 app.use('/api/circles', circleRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/messages', messageRoutes);
 
 app.use(errorHandler);
 
-app.listen(config.port, () => {
+initializeSocketServer(httpServer);
+
+httpServer.listen(config.port, () => {
   console.log(`SkillCircle API listening on http://localhost:${config.port}`);
 });

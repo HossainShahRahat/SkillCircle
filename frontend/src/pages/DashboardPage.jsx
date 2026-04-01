@@ -22,7 +22,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-5">
       <Card className="overflow-hidden p-0">
-        <div className="grid gap-6 p-6 md:grid-cols-[1.2fr_0.8fr] md:p-8">
+        <div className="grid gap-6 p-5 sm:p-6 md:grid-cols-[1.2fr_0.8fr] md:p-8">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.24em] text-[rgb(var(--muted))]">Global feed</p>
             <h1 className="mt-3 text-4xl font-bold tracking-tight">Learning progress with actual signal.</h1>
@@ -86,4 +86,3 @@ export function DashboardPage() {
     </div>
   );
 }
-

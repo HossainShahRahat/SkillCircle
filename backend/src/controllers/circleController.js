@@ -1,4 +1,5 @@
 import { repository } from '../models/repository.js';
+import { emitToUser } from '../services/socketServer.js';
 
 function badRequest(message) {
   const error = new Error(message);
@@ -39,12 +40,13 @@ export async function joinCircle(req, res, next) {
   try {
     const result = await repository.joinCircle(req.params.circleId, req.user.id);
     if (result.notificationTargetUserId) {
-      await repository.createNotification({
+      const notification = await repository.createNotification({
         userId: result.notificationTargetUserId,
         type: 'join',
         referenceId: req.params.circleId,
         triggeredBy: req.user.id,
       });
+      emitToUser(result.notificationTargetUserId, 'new_notification', { notification });
     }
     res.json(result);
   } catch (error) {
@@ -61,12 +63,13 @@ export async function joinCircleByCode(req, res, next) {
 
     const result = await repository.joinCircleByCode(code, req.user.id);
     if (result.notificationTargetUserId) {
-      await repository.createNotification({
+      const notification = await repository.createNotification({
         userId: result.notificationTargetUserId,
         type: 'join',
         referenceId: result.circle.id,
         triggeredBy: req.user.id,
       });
+      emitToUser(result.notificationTargetUserId, 'new_notification', { notification });
     }
     res.json(result);
   } catch (error) {

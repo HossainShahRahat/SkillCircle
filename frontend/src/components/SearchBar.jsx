@@ -45,7 +45,7 @@ export function SearchBar() {
       </div>
 
       {open ? (
-        <div className="surface-card absolute left-0 right-0 top-[calc(100%+0.75rem)] z-40 p-4">
+        <div className="surface-card absolute left-0 right-0 top-[calc(100%+0.75rem)] z-40 p-3 sm:p-4">
           {searchLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((item) => (
@@ -115,4 +115,3 @@ export function SearchBar() {
     </div>
   );
 }
-

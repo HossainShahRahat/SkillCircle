@@ -13,11 +13,13 @@ import { Button } from '../components/Button.jsx';
 import { useAuthStore } from '../store/authStore.js';
 import { useAppStore } from '../store/appStore.js';
 import { useTheme } from '../hooks/useTheme.js';
+import { getSocket } from '../services/socket.js';
 
 export function AppLayout() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const circles = useAppStore((state) => state.circles);
   const loadCircles = useAppStore((state) => state.loadCircles);
@@ -28,6 +30,10 @@ export function AppLayout() {
   const joinCircle = useAppStore((state) => state.joinCircle);
   const joinCircleByCode = useAppStore((state) => state.joinCircleByCode);
   const showToast = useAppStore((state) => state.showToast);
+  const ingestRealtimePost = useAppStore((state) => state.ingestRealtimePost);
+  const ingestRealtimeComment = useAppStore((state) => state.ingestRealtimeComment);
+  const ingestRealtimeNotification = useAppStore((state) => state.ingestRealtimeNotification);
+  const ingestRealtimeMessage = useAppStore((state) => state.ingestRealtimeMessage);
   const submitting = useAppStore((state) => state.submitting);
   const [circleModalOpen, setCircleModalOpen] = useState(false);
   const [joinCodeModalOpen, setJoinCodeModalOpen] = useState(false);
@@ -38,8 +44,35 @@ export function AppLayout() {
     loadCircles();
   }, [refreshUser, loadCircles]);
 
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const socket = getSocket(token);
+    if (!socket) return undefined;
+
+    const handleNewPost = ({ post }) => ingestRealtimePost(post);
+    const handleNewComment = ({ postId, comment }) => ingestRealtimeComment(postId, comment);
+    const handleNewNotification = ({ notification }) => ingestRealtimeNotification(notification);
+    const handleNewMention = ({ notification }) => ingestRealtimeNotification(notification);
+    const handleNewMessage = ({ message }) => ingestRealtimeMessage(message);
+
+    socket.on('new_post', handleNewPost);
+    socket.on('new_comment', handleNewComment);
+    socket.on('new_notification', handleNewNotification);
+    socket.on('new_mention', handleNewMention);
+    socket.on('new_message', handleNewMessage);
+
+    return () => {
+      socket.off('new_post', handleNewPost);
+      socket.off('new_comment', handleNewComment);
+      socket.off('new_notification', handleNewNotification);
+      socket.off('new_mention', handleNewMention);
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [token, ingestRealtimePost, ingestRealtimeComment, ingestRealtimeNotification, ingestRealtimeMessage]);
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-[1600px] gap-6 px-4 py-6 lg:px-6">
+    <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-3 py-4 sm:px-4 lg:flex-row lg:px-6 lg:py-6">
       <Sidebar
         user={user}
         circles={circles}
@@ -55,10 +88,10 @@ export function AppLayout() {
             <p className="muted-copy">Build consistency out loud.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" className="h-11 w-11 rounded-full p-0" onClick={() => setModalOpen(true)}>
+            <Button variant="secondary" className="h-12 w-12 rounded-full p-0" onClick={() => setModalOpen(true)}>
               <Plus size={18} />
             </Button>
-            <Button variant="ghost" className="h-11 w-11 rounded-full p-0" onClick={() => setMobileNavOpen((open) => !open)}>
+            <Button variant="ghost" className="h-12 w-12 rounded-full p-0" onClick={() => setMobileNavOpen((open) => !open)}>
               <Menu size={18} />
             </Button>
           </div>
@@ -89,7 +122,7 @@ export function AppLayout() {
           </div>
         </div>
 
-        <div className="flex min-w-0 gap-6">
+        <div className="flex min-w-0 flex-col gap-6 2xl:flex-row">
           <main className="min-w-0 flex-1">
             <Outlet />
           </main>

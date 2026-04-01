@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../services/api.js';
+import { disconnectSocket } from '../services/socket.js';
 
 const tokenKey = 'skillcircle-token';
 const userKey = 'skillcircle-user';
@@ -40,9 +41,9 @@ export const useAuthStore = create((set) => ({
     set({ user });
   },
   logout() {
+    disconnectSocket();
     localStorage.removeItem(tokenKey);
     localStorage.removeItem(userKey);
     set({ token: null, user: null, error: '' });
   },
 }));
-

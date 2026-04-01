@@ -77,7 +77,8 @@ export const demoComments = [
     id: 'co_demo_1',
     user_id: 'u_demo_2',
     post_id: 'p_demo_1',
-    content: 'The token-scale insight is real. That usually makes everything else snap into place.',
+    content: 'The token-scale insight is real, @MayaChen. That usually makes everything else snap into place.',
+    mentioned_users: ['u_demo_1'],
     created_at: '2026-03-31T13:00:00.000Z',
   },
 ];
@@ -96,5 +97,31 @@ export const demoNotifications = [
     triggered_by: 'u_demo_2',
     is_read: false,
     created_at: '2026-03-31T13:05:00.000Z',
+  },
+  {
+    id: 'n_demo_2',
+    user_id: 'u_demo_1',
+    type: 'mention',
+    reference_id: 'p_demo_1',
+    triggered_by: 'u_demo_2',
+    is_read: false,
+    created_at: '2026-03-31T13:00:00.000Z',
+  },
+];
+
+export const demoMessages = [
+  {
+    id: 'm_demo_1',
+    circle_id: 'c_demo_1',
+    user_id: 'u_demo_1',
+    content: 'Kicking off a component refactor thread here so feedback does not get lost in the feed.',
+    created_at: '2026-03-31T10:00:00.000Z',
+  },
+  {
+    id: 'm_demo_2',
+    circle_id: 'c_demo_1',
+    user_id: 'u_demo_2',
+    content: 'Love that. Share the spacing tokens when you have them.',
+    created_at: '2026-03-31T10:04:00.000Z',
   },
 ];

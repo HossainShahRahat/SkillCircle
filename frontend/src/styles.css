@@ -47,6 +47,10 @@
   textarea {
     @apply outline-none;
   }
+
+  html {
+    @apply scroll-smooth;
+  }
 }
 
 @layer components {
@@ -62,4 +66,3 @@
     @apply text-sm text-[rgb(var(--muted))];
   }
 }
-
