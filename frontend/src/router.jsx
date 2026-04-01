@@ -8,6 +8,9 @@ import { AuthPage } from './pages/AuthPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { ProfilePage } from './pages/ProfilePage.jsx';
 import { CirclePage } from './pages/CirclePage.jsx';
+import { SettingsPage } from './pages/SettingsPage.jsx';
+import { InsightsPage } from './pages/InsightsPage.jsx';
+import { DirectMessagesPage } from './pages/DirectMessagesPage.jsx';
 import { useAuthStore } from './store/authStore.js';
 
 function ProtectedRoute() {
@@ -34,6 +37,9 @@ export const router = createBrowserRouter([
           { index: true, element: <DashboardPage /> },
           { path: '/profile', element: <ProfilePage /> },
           { path: '/profile/:userId', element: <ProfilePage /> },
+          { path: '/settings', element: <SettingsPage /> },
+          { path: '/insights', element: <InsightsPage /> },
+          { path: '/messages', element: <DirectMessagesPage /> },
           { path: '/circles/:circleId', element: <CirclePage /> },
         ],
       },

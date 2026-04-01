@@ -11,8 +11,12 @@ import { notificationRoutes } from './routes/notificationRoutes.js';
 import { searchRoutes } from './routes/searchRoutes.js';
 import { messageRoutes } from './routes/messageRoutes.js';
 import { reactionRoutes } from './routes/reactionRoutes.js';
+import { dashboardRoutes } from './routes/dashboardRoutes.js';
+import { analyticsRoutes } from './routes/analyticsRoutes.js';
+import { settingsRoutes } from './routes/settingsRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { attachCurrentUser } from './middleware/authMiddleware.js';
+import { applySecurityHeaders } from './middleware/securityMiddleware.js';
 import { initializeSocketServer } from './services/socketServer.js';
 
 const app = express();
@@ -32,7 +36,8 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: '2mb' }));
+app.use(applySecurityHeaders);
+app.use(express.json({ limit: config.bodyLimit }));
 app.use(morgan('dev'));
 app.use(attachCurrentUser);
 
@@ -48,6 +53,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/reactions', reactionRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.use(errorHandler);
 

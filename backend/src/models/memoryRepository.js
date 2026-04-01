@@ -8,6 +8,8 @@ import {
   demoNotifications,
   demoPosts,
   demoReactions,
+  demoStreaks,
+  demoUserSettings,
   demoUsers,
 } from '../services/seedData.js';
 import { buildMentionPayload } from '../services/mentionService.js';
@@ -16,6 +18,19 @@ function publicUser(user) {
   if (!user) return null;
   const { password_hash, ...rest } = user;
   return rest;
+}
+
+function defaultSettings(userId) {
+  return {
+    user_id: userId,
+    post_visibility: 'public',
+    notify_likes: true,
+    notify_comments: true,
+    notify_mentions: true,
+    notify_joins: true,
+    weekly_digest: false,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 function summarizeReactions(reactions, currentUserId, referenceType, referenceId) {
@@ -80,6 +95,39 @@ function serializeCircle(circle, circleMembers, userId) {
   };
 }
 
+function getUserSettingsRecord(userSettings, userId) {
+  let settings = userSettings.find((item) => item.user_id === userId);
+  if (!settings) {
+    settings = defaultSettings(userId);
+    userSettings.push(settings);
+  }
+  return settings;
+}
+
+function getSharedCircleIds(circleMembers, firstUserId, secondUserId) {
+  const firstCircles = circleMembers
+    .filter((member) => member.user_id === firstUserId)
+    .map((member) => member.circle_id);
+  return firstCircles.filter((circleId) => Boolean(getMembership(circleMembers, circleId, secondUserId)));
+}
+
+function canViewPost(post, viewerId, userSettings, circleMembers) {
+  if (!post || post.deleted_at) return false;
+  if (!viewerId) return !post.circle_id;
+  if (post.user_id === viewerId) return true;
+
+  const settings = getUserSettingsRecord(userSettings, post.user_id);
+  if (settings.post_visibility === 'public') {
+    return true;
+  }
+
+  if (post.circle_id) {
+    return Boolean(getMembership(circleMembers, post.circle_id, viewerId));
+  }
+
+  return getSharedCircleIds(circleMembers, post.user_id, viewerId).length > 0;
+}
+
 function generateInviteCode(existingCircles) {
   let code = '';
   do {
@@ -123,6 +171,88 @@ function profileStats(userId, posts, likes, circleMembers) {
   };
 }
 
+function getStreakRecord(streaks, userId) {
+  let streak = streaks.find((item) => item.user_id === userId);
+  if (!streak) {
+    streak = {
+      user_id: userId,
+      current_streak: 0,
+      last_posted_at: null,
+    };
+    streaks.push(streak);
+  }
+  return streak;
+}
+
+function startOfDay(date) {
+  const normalized = new Date(date);
+  normalized.setUTCHours(0, 0, 0, 0);
+  return normalized;
+}
+
+function updateStreak(streak, postedAt) {
+  const targetDate = startOfDay(postedAt);
+  if (!streak.last_posted_at) {
+    streak.current_streak = 1;
+    streak.last_posted_at = postedAt;
+    return streak;
+  }
+
+  const lastDate = startOfDay(streak.last_posted_at);
+  const diffDays = Math.round((targetDate - lastDate) / 86400000);
+  if (diffDays <= 0) {
+    streak.last_posted_at = postedAt;
+    return streak;
+  }
+  if (diffDays === 1) {
+    streak.current_streak += 1;
+  } else {
+    streak.current_streak = 1;
+  }
+  streak.last_posted_at = postedAt;
+  return streak;
+}
+
+function getBadgeForStreak(currentStreak) {
+  if (currentStreak >= 14) return { label: 'Momentum Master', tone: 'gold' };
+  if (currentStreak >= 7) return { label: 'Consistency Builder', tone: 'accent' };
+  if (currentStreak >= 3) return { label: 'On a Roll', tone: 'soft' };
+  return { label: 'Starting Strong', tone: 'neutral' };
+}
+
+function buildWeeklyActivity(posts, currentDate = new Date()) {
+  const series = [];
+  for (let index = 6; index >= 0; index -= 1) {
+    const bucket = new Date(currentDate);
+    bucket.setUTCDate(bucket.getUTCDate() - index);
+    const isoDay = bucket.toISOString().slice(0, 10);
+    series.push({
+      day: bucket.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+      date: isoDay,
+      count: posts.filter((post) => post.created_at.slice(0, 10) === isoDay).length,
+    });
+  }
+  return series;
+}
+
+function buildLeaderboard(circleId, circleMembers, posts, streaks, users) {
+  return circleMembers
+    .filter((member) => member.circle_id === circleId)
+    .map((member) => {
+      const memberPosts = posts.filter((post) => post.circle_id === circleId && post.user_id === member.user_id && !post.deleted_at);
+      const streak = getStreakRecord(streaks, member.user_id);
+      return {
+        ...serializeCircleMember(member, users),
+        totalPosts: memberPosts.length,
+        streak: streak.current_streak,
+        badge: getBadgeForStreak(streak.current_streak),
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.streak - left.streak || right.totalPosts - left.totalPosts)
+    .slice(0, 5);
+}
+
 function serializeMessage(message, users) {
   return {
     ...message,
@@ -140,6 +270,8 @@ export function createMemoryRepository() {
   const reactions = structuredClone(demoReactions);
   const circles = structuredClone(demoCircles);
   const circleMembers = structuredClone(demoCircleMembers);
+  const streaks = structuredClone(demoStreaks);
+  const userSettings = structuredClone(demoUserSettings);
 
   return {
     async findUserById(id) {
@@ -152,6 +284,11 @@ export function createMemoryRepository() {
       return {
         user: publicUser(user),
         stats: profileStats(userId, posts, likes, circleMembers),
+        settings: getUserSettingsRecord(userSettings, userId),
+        streak: {
+          ...getStreakRecord(streaks, userId),
+          badge: getBadgeForStreak(getStreakRecord(streaks, userId).current_streak),
+        },
       };
     },
     async findUserWithPasswordByEmail(email) {
@@ -166,9 +303,13 @@ export function createMemoryRepository() {
         bio: '',
         avatar_url: '',
         skills: [],
+        total_posts: 0,
+        total_reactions: 0,
         created_at: new Date().toISOString(),
       };
       users.unshift(user);
+      userSettings.push(defaultSettings(user.id));
+      streaks.push({ user_id: user.id, current_streak: 0, last_posted_at: null });
       return publicUser(user);
     },
     async updateProfile(userId, payload) {
@@ -188,11 +329,13 @@ export function createMemoryRepository() {
 
       return posts
         .filter((post) => (circleId ? post.circle_id === circleId : true))
+        .filter((post) => canViewPost(post, currentUserId, userSettings, circleMembers))
         .filter((post) => !post.deleted_at)
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .map((post) => enrichPost(post, users, circles, comments, likes, reactions, currentUserId));
     },
     async createPost({ userId, content, imageUrl, circleId, scheduledFor = null }) {
+      const createdAt = new Date().toISOString();
       const post = {
         id: `p_${nanoid(10)}`,
         user_id: userId,
@@ -200,11 +343,16 @@ export function createMemoryRepository() {
         content,
         image_url: imageUrl || '',
         scheduled_for: scheduledFor,
-        updated_at: new Date().toISOString(),
+        updated_at: createdAt,
         deleted_at: null,
-        created_at: new Date().toISOString(),
+        created_at: createdAt,
       };
       posts.unshift(post);
+      const user = users.find((item) => item.id === userId);
+      if (user) {
+        user.total_posts = (user.total_posts || 0) + 1;
+      }
+      updateStreak(getStreakRecord(streaks, userId), createdAt);
       return enrichPost(post, users, circles, comments, likes, reactions, userId);
     },
     async getPostById(postId, currentUserId) {
@@ -323,6 +471,17 @@ export function createMemoryRepository() {
           type: reactionType,
           created_at: new Date().toISOString(),
         });
+      }
+
+      if (referenceType === 'post') {
+        const post = posts.find((item) => item.id === referenceId);
+        const owner = post ? users.find((item) => item.id === post.user_id) : null;
+        if (owner) {
+          owner.total_reactions = reactions.filter(
+            (reaction) => reaction.reference_type === 'post'
+              && posts.some((item) => item.id === reaction.reference_id && item.user_id === owner.id),
+          ).length;
+        }
       }
 
       return summarizeReactions(reactions, userId, referenceType, referenceId);
@@ -444,6 +603,38 @@ export function createMemoryRepository() {
           : [],
       };
     },
+    async getDashboard(userId) {
+      const joinedCircleIds = circleMembers
+        .filter((member) => member.user_id === userId)
+        .map((member) => member.circle_id);
+      const personalizedFeed = posts
+        .filter((post) => !post.deleted_at)
+        .filter((post) => joinedCircleIds.length ? joinedCircleIds.includes(post.circle_id) : canViewPost(post, userId, userSettings, circleMembers))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .map((post) => enrichPost(post, users, circles, comments, likes, reactions, userId))
+        .slice(0, 20);
+      const highlights = notifications
+        .filter((notification) => notification.user_id === userId)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5)
+        .map((notification) => serializeNotification(notification, users, posts, circles));
+      const streak = getStreakRecord(streaks, userId);
+      const myPosts = posts.filter((post) => post.user_id === userId && !post.deleted_at);
+
+      return {
+        feed: personalizedFeed,
+        highlights,
+        streak: {
+          ...streak,
+          badge: getBadgeForStreak(streak.current_streak),
+        },
+        insights: {
+          joinedCircles: joinedCircleIds.length,
+          totalPosts: myPosts.length,
+          activeCircleCount: new Set(myPosts.filter((post) => post.circle_id).map((post) => post.circle_id)).size,
+        },
+      };
+    },
     async searchCircle(circleId, query, userId) {
       const circle = circles.find((item) => item.id === circleId);
       if (!circle) return { posts: [], members: [] };
@@ -559,6 +750,10 @@ export function createMemoryRepository() {
       const post = posts.find((item) => item.id === postId && !item.deleted_at);
       if (!post) return null;
       post.deleted_at = new Date().toISOString();
+      const user = users.find((item) => item.id === post.user_id);
+      if (user) {
+        user.total_posts = Math.max(0, (user.total_posts || 0) - 1);
+      }
       return { id: postId, circle_id: post.circle_id };
     },
     async updateComment(commentId, userId, content, mentionedUserIds = []) {
@@ -584,6 +779,71 @@ export function createMemoryRepository() {
     canModerateCircleContent(circleId, userId) {
       const role = getMembership(circleMembers, circleId, userId)?.role;
       return ['admin', 'moderator'].includes(role);
+    },
+    async getUserSettings(userId) {
+      return getUserSettingsRecord(userSettings, userId);
+    },
+    async updateUserSettings(userId, payload) {
+      const settings = getUserSettingsRecord(userSettings, userId);
+      Object.assign(settings, payload, { updated_at: new Date().toISOString() });
+      return settings;
+    },
+    async getUserAnalytics(userId) {
+      const myPosts = posts.filter((post) => post.user_id === userId && !post.deleted_at);
+      const streak = getStreakRecord(streaks, userId);
+      const activeCircleIds = Array.from(new Set(myPosts.map((post) => post.circle_id).filter(Boolean)));
+      const topCircleId = activeCircleIds.sort((left, right) => (
+        myPosts.filter((post) => post.circle_id === right).length
+        - myPosts.filter((post) => post.circle_id === left).length
+      ))[0] || null;
+
+      return {
+        totals: {
+          posts: myPosts.length,
+          reactionsReceived: reactions.filter(
+            (reaction) => reaction.reference_type === 'post'
+              && myPosts.some((post) => post.id === reaction.reference_id),
+          ).length,
+          activeCircles: circleMembers.filter((member) => member.user_id === userId).length,
+        },
+        streak: {
+          ...streak,
+          badge: getBadgeForStreak(streak.current_streak),
+        },
+        weeklyActivity: buildWeeklyActivity(myPosts),
+        topCircle: topCircleId ? circles.find((circle) => circle.id === topCircleId) || null : null,
+      };
+    },
+    async getCircleAnalytics(circleId, userId) {
+      const circle = circles.find((item) => item.id === circleId);
+      if (!circle) return null;
+      if (circle.is_private && !getMembership(circleMembers, circleId, userId)) {
+        return null;
+      }
+
+      const circlePosts = posts.filter((post) => post.circle_id === circleId && !post.deleted_at);
+      const memberIds = circleMembers.filter((member) => member.circle_id === circleId).map((member) => member.user_id);
+      const activeWindow = Date.now() - (7 * 24 * 60 * 60 * 1000);
+
+      return {
+        circle: serializeCircle(circle, circleMembers, userId),
+        totals: {
+          posts: circlePosts.length,
+          activeMembers: new Set(
+            circlePosts
+              .filter((post) => new Date(post.created_at).getTime() >= activeWindow)
+              .map((post) => post.user_id),
+          ).size,
+          messages: messages.filter((message) => message.circle_id === circleId).length,
+        },
+        weeklyActivity: buildWeeklyActivity(circlePosts),
+        leaderboard: buildLeaderboard(circleId, circleMembers, posts, streaks, users),
+        premium: {
+          enabled: Boolean(circle.is_premium),
+          badge: circle.premium_badge || 'core',
+        },
+        members: memberIds.length,
+      };
     },
   };
 }

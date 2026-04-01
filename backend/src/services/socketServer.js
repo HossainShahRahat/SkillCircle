@@ -55,6 +55,29 @@ export function initializeSocketServer(httpServer) {
         socket.leave(`circle:${circleId}`);
       }
     });
+
+    socket.on('join_direct_room', (chatId) => {
+      if (chatId) {
+        socket.join(`direct:${chatId}`);
+      }
+    });
+
+    socket.on('leave_direct_room', (chatId) => {
+      if (chatId) {
+        socket.leave(`direct:${chatId}`);
+      }
+    });
+
+    socket.on('typing', ({ scope, targetId, isTyping }) => {
+      if (!scope || !targetId) return;
+      const room = scope === 'direct' ? `direct:${targetId}` : `circle:${targetId}`;
+      socket.to(room).emit('typing', {
+        scope,
+        targetId,
+        isTyping: Boolean(isTyping),
+        user: socket.user,
+      });
+    });
   });
 
   return ioInstance;
@@ -72,6 +95,11 @@ export function emitToUser(userId, event, payload) {
 export function emitToCircle(circleId, event, payload) {
   if (!ioInstance || !circleId) return;
   ioInstance.to(`circle:${circleId}`).emit(event, payload);
+}
+
+export function emitToDirectChat(chatId, event, payload) {
+  if (!ioInstance || !chatId) return;
+  ioInstance.to(`direct:${chatId}`).emit(event, payload);
 }
 
 export function emitGlobal(event, payload) {

@@ -27,6 +27,9 @@ It is designed as a focused social product, not a general-purpose network. The e
 - Skill Circles for community creation, joining, and circle-specific posting
 - Light and dark mode with a consistent product-style UI
 - Real-time feed, comments, notifications, and circle chat with Socket.io
+- Personalized dashboard feed with activity highlights and streak tracking
+- User settings for privacy and notification preferences
+- Insights pages for user and circle-level activity
 
 ## Project Structure
 
@@ -160,6 +163,13 @@ SkillCircle/
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key
 - `STORAGE_MODE`: `simulated` by default
 - `R2_PUBLIC_BASE_URL`: public base URL for generated asset links
+- `R2_BUCKET_NAME`: Cloudflare R2 bucket name for production image storage
+- `R2_ENDPOINT`: Cloudflare R2 S3-compatible endpoint
+- `R2_ACCESS_KEY_ID`: R2 access key id
+- `R2_SECRET_ACCESS_KEY`: R2 secret access key
+- `BODY_LIMIT`: JSON payload size limit for the API
+- `APP_BASE_URL`: deployed backend base URL
+- `FORCE_HTTPS`: redirect forwarded HTTP traffic to HTTPS in production
 - `NODE_ENV`: runtime mode
 
 ## Demo Login
@@ -244,6 +254,7 @@ npm run build --workspace frontend
 
 - Run the latest [schema.sql](./backend/supabase/schema.sql) before production deploys
 - The schema now includes notifications and circle chat messages
+- The schema also includes `streaks`, `user_settings`, premium circle metadata, and analytics-friendly counters
 
 ## Real-Time Events
 
@@ -251,6 +262,15 @@ npm run build --workspace frontend
 - `new_comment`
 - `new_notification`
 - `new_message`
+- Dashboard and analytics endpoints derive from existing post, circle, and notification data, so local demo mode stays useful without extra services
+
+## New Endpoints
+
+- `GET /api/dashboard`
+- `GET /api/settings`
+- `PUT /api/settings`
+- `GET /api/analytics/user`
+- `GET /api/analytics/circles/:circleId`
 
 ## Suggested Next Steps
 

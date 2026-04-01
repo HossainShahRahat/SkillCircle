@@ -15,6 +15,8 @@ function normalizeCircle(circle, userId) {
     name: circle.name,
     description: circle.description,
     is_private: circle.is_private,
+    is_premium: circle.is_premium,
+    premium_badge: circle.premium_badge,
     invite_code: membership?.role === 'admin' ? circle.invite_code : null,
     created_by: circle.created_by,
     created_at: circle.created_at,
@@ -26,6 +28,18 @@ function normalizeCircle(circle, userId) {
 
 function generateInviteCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function defaultSettings(userId) {
+  return {
+    user_id: userId,
+    post_visibility: 'public',
+    notify_likes: true,
+    notify_comments: true,
+    notify_mentions: true,
+    notify_joins: true,
+    weekly_digest: false,
+  };
 }
 
 function profileStatsFromData(userId, posts, likes, circleMembers) {
@@ -49,6 +63,49 @@ function summarizeReactions(reactions, currentUserId) {
       ? (reactions || []).find((reaction) => reaction.user_id === currentUserId)?.type || null
       : null,
   };
+}
+
+function getBadgeForStreak(currentStreak) {
+  if (currentStreak >= 14) return { label: 'Momentum Master', tone: 'gold' };
+  if (currentStreak >= 7) return { label: 'Consistency Builder', tone: 'accent' };
+  if (currentStreak >= 3) return { label: 'On a Roll', tone: 'soft' };
+  return { label: 'Starting Strong', tone: 'neutral' };
+}
+
+function buildWeeklyActivity(posts, currentDate = new Date()) {
+  const series = [];
+  for (let index = 6; index >= 0; index -= 1) {
+    const bucket = new Date(currentDate);
+    bucket.setUTCDate(bucket.getUTCDate() - index);
+    const isoDay = bucket.toISOString().slice(0, 10);
+    series.push({
+      day: bucket.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+      date: isoDay,
+      count: posts.filter((post) => post.created_at.slice(0, 10) === isoDay).length,
+    });
+  }
+  return series;
+}
+
+function canViewSupabasePost(post, currentUserId, settingsMap, membershipMap, viewerCircleIds) {
+  if (!post || post.deleted_at) return false;
+  if (post.user_id === currentUserId) return true;
+
+  const settings = settingsMap.get(post.user_id) || defaultSettings(post.user_id);
+  if (settings.post_visibility === 'public') {
+    return true;
+  }
+
+  if (!currentUserId) {
+    return false;
+  }
+
+  if (post.circle_id) {
+    return viewerCircleIds.has(post.circle_id);
+  }
+
+  const authorCircleIds = membershipMap.get(post.user_id) || [];
+  return authorCircleIds.some((circleId) => viewerCircleIds.has(circleId));
 }
 
 export function createSupabaseRepository() {
@@ -91,7 +148,7 @@ export function createSupabaseRepository() {
       deleted_at,
       created_at,
       users:user_id ( id, name, email, bio, avatar_url, skills, created_at ),
-      circles:circle_id ( id, name, description, is_private, invite_code, created_by, created_at ),
+      circles:circle_id ( id, name, description, is_private, is_premium, premium_badge, invite_code, created_by, created_at ),
       comments (
         id,
         user_id,
@@ -115,13 +172,37 @@ export function createSupabaseRepository() {
     const { data, error } = await query;
     if (error) throw error;
 
-      const visibleComments = data.flatMap((post) => (post.comments || []).filter((comment) => !comment.deleted_at));
+      const authorIds = Array.from(new Set(data.map((post) => post.user_id)));
+      const { data: settingsRows } = authorIds.length
+        ? await supabase.from('user_settings').select('user_id, post_visibility').in('user_id', authorIds)
+        : { data: [] };
+      const settingsMap = new Map((settingsRows || []).map((row) => [row.user_id, row]));
+      const membershipUserIds = currentUserId
+        ? Array.from(new Set([...authorIds, currentUserId]))
+        : authorIds;
+      const { data: membershipRows } = membershipUserIds.length
+        ? await supabase.from('circle_members').select('user_id, circle_id').in('user_id', membershipUserIds)
+        : { data: [] };
+      const membershipMap = new Map();
+      (membershipRows || []).forEach((row) => {
+        membershipMap.set(row.user_id, [...(membershipMap.get(row.user_id) || []), row.circle_id]);
+      });
+      const viewerCircleIds = new Set(membershipMap.get(currentUserId) || []);
+      const visiblePosts = data.filter((post) => canViewSupabasePost(
+        post,
+        currentUserId,
+        settingsMap,
+        membershipMap,
+        viewerCircleIds,
+      ));
+
+      const visibleComments = visiblePosts.flatMap((post) => (post.comments || []).filter((comment) => !comment.deleted_at));
       const mentionedUserIds = Array.from(new Set(visibleComments.flatMap((comment) => comment.mentioned_users || [])));
       const { data: mentionedUsers } = mentionedUserIds.length
         ? await supabase.from('users').select('id, name').in('id', mentionedUserIds)
         : { data: [] };
       const mentionedUsersMap = new Map((mentionedUsers || []).map((user) => [user.id, user]));
-      const postIds = data.map((post) => post.id);
+      const postIds = visiblePosts.map((post) => post.id);
       const commentIds = visibleComments.map((comment) => comment.id);
       const { data: postReactions } = postIds.length
         ? await supabase.from('reactions').select('id, user_id, type, reference_id').eq('reference_type', 'post').in('reference_id', postIds)
@@ -132,7 +213,7 @@ export function createSupabaseRepository() {
       const postReactionsMap = new Map(postIds.map((id) => [id, (postReactions || []).filter((reaction) => reaction.reference_id === id)]));
       const commentReactionsMap = new Map(commentIds.map((id) => [id, (commentReactions || []).filter((reaction) => reaction.reference_id === id)]));
 
-    return data.map((post) => ({
+    return visiblePosts.map((post) => ({
       id: post.id,
       user_id: post.user_id,
       circle_id: post.circle_id,
@@ -160,6 +241,74 @@ export function createSupabaseRepository() {
       reactions: summarizeReactions(postReactionsMap.get(post.id), currentUserId),
       isEdited: post.updated_at && post.updated_at !== post.created_at,
     }));
+  }
+
+  async function ensureUserSettings(userId) {
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return data;
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('user_settings')
+      .insert(defaultSettings(userId))
+      .select('*')
+      .single();
+    if (insertError) throw insertError;
+    return inserted;
+  }
+
+  async function ensureStreak(userId) {
+    const { data, error } = await supabase
+      .from('streaks')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return data;
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('streaks')
+      .insert({ user_id: userId, current_streak: 0, last_posted_at: null })
+      .select('*')
+      .single();
+    if (insertError) throw insertError;
+    return inserted;
+  }
+
+  async function recordPostStreak(userId, postedAt) {
+    const streak = await ensureStreak(userId);
+    const normalizedTarget = new Date(postedAt);
+    normalizedTarget.setUTCHours(0, 0, 0, 0);
+    let nextStreak = streak.current_streak || 0;
+
+    if (!streak.last_posted_at) {
+      nextStreak = 1;
+    } else {
+      const previous = new Date(streak.last_posted_at);
+      previous.setUTCHours(0, 0, 0, 0);
+      const diffDays = Math.round((normalizedTarget - previous) / 86400000);
+      if (diffDays === 1) {
+        nextStreak += 1;
+      } else if (diffDays > 1) {
+        nextStreak = 1;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('streaks')
+      .update({
+        current_streak: nextStreak,
+        last_posted_at: postedAt,
+      })
+      .eq('user_id', userId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
   }
 
   return {
@@ -190,9 +339,19 @@ export function createSupabaseRepository() {
       if (likesError) throw likesError;
       if (membersError) throw membersError;
 
+      const [settings, streak] = await Promise.all([
+        ensureUserSettings(userId),
+        ensureStreak(userId),
+      ]);
+
       return {
         user,
         stats: profileStatsFromData(userId, postsData || [], likesData || [], membersData || []),
+        settings,
+        streak: {
+          ...streak,
+          badge: getBadgeForStreak(streak.current_streak || 0),
+        },
       };
     },
     async findUserWithPasswordByEmail(email) {
@@ -215,6 +374,10 @@ export function createSupabaseRepository() {
         .select('id, name, email, bio, avatar_url, skills, created_at')
         .single();
       if (error) throw error;
+      await Promise.all([
+        supabase.from('user_settings').insert(defaultSettings(data.id)),
+        supabase.from('streaks').insert({ user_id: data.id, current_streak: 0, last_posted_at: null }),
+      ]);
       return data;
     },
     async updateProfile(userId, payload) {
@@ -231,6 +394,7 @@ export function createSupabaseRepository() {
       return loadPosts(currentUserId, circleId);
     },
     async createPost({ userId, content, imageUrl, circleId, scheduledFor = null }) {
+      const createdAt = new Date().toISOString();
       const { error } = await supabase
         .from('posts')
         .insert({
@@ -239,8 +403,15 @@ export function createSupabaseRepository() {
           image_url: imageUrl,
           circle_id: circleId || null,
           scheduled_for: scheduledFor,
+          created_at: createdAt,
+          updated_at: createdAt,
         });
       if (error) throw error;
+
+      await Promise.all([
+        recordPostStreak(userId, createdAt),
+        supabase.rpc('increment_user_total_posts', { target_user_id: userId }).catch(() => null),
+      ]);
 
       const posts = await loadPosts(userId, circleId || null);
       return posts[0];
@@ -269,7 +440,7 @@ export function createSupabaseRepository() {
           deleted_at,
           created_at,
           users:user_id ( id, name, email, bio, avatar_url, skills, created_at ),
-          circles:circle_id ( id, name, description, is_private, invite_code, created_by, created_at ),
+          circles:circle_id ( id, name, description, is_private, is_premium, premium_badge, invite_code, created_by, created_at ),
           comments (
             id,
             user_id,
@@ -287,6 +458,22 @@ export function createSupabaseRepository() {
         .maybeSingle();
       if (error) throw error;
       if (!data || data.deleted_at) return null;
+
+      const [settingsRows, membershipRows] = await Promise.all([
+        supabase.from('user_settings').select('user_id, post_visibility').eq('user_id', data.user_id),
+        currentUserId
+          ? supabase.from('circle_members').select('user_id, circle_id').in('user_id', [data.user_id, currentUserId])
+          : Promise.resolve({ data: [] }),
+      ]);
+      const settingsMap = new Map((settingsRows.data || []).map((row) => [row.user_id, row]));
+      const membershipMap = new Map();
+      (membershipRows.data || []).forEach((row) => {
+        membershipMap.set(row.user_id, [...(membershipMap.get(row.user_id) || []), row.circle_id]);
+      });
+      const viewerCircleIds = new Set(membershipMap.get(currentUserId) || []);
+      if (!canViewSupabasePost(data, currentUserId, settingsMap, membershipMap, viewerCircleIds)) {
+        return null;
+      }
 
       const mentionedUserIds = Array.from(
         new Set((data.comments || []).filter((comment) => !comment.deleted_at).flatMap((comment) => comment.mentioned_users || [])),
@@ -449,6 +636,8 @@ export function createSupabaseRepository() {
           name,
           description,
           is_private,
+          is_premium,
+          premium_badge,
           invite_code,
           created_by,
           created_at,
@@ -541,6 +730,8 @@ export function createSupabaseRepository() {
           name,
           description,
           is_private,
+          is_premium,
+          premium_badge,
           invite_code,
           created_by,
           created_at,
@@ -572,6 +763,8 @@ export function createSupabaseRepository() {
           name,
           description,
           is_private,
+          is_premium,
+          premium_badge,
           invite_code,
           created_by,
           created_at,
@@ -618,6 +811,8 @@ export function createSupabaseRepository() {
           name,
           description,
           is_private,
+          is_premium,
+          premium_badge,
           invite_code,
           created_by,
           created_at,
@@ -643,6 +838,36 @@ export function createSupabaseRepository() {
             role: member.role,
           }))
           : [],
+      };
+    },
+    async getDashboard(userId) {
+      const { data: memberships, error: membershipError } = await supabase
+        .from('circle_members')
+        .select('circle_id')
+        .eq('user_id', userId);
+      if (membershipError) throw membershipError;
+
+      const joinedCircleIds = (memberships || []).map((member) => member.circle_id);
+      const [feed, notifications, streak] = await Promise.all([
+        joinedCircleIds.length ? loadPosts(userId) : loadPosts(userId),
+        this.listNotifications(userId),
+        ensureStreak(userId),
+      ]);
+
+      return {
+        feed: joinedCircleIds.length
+          ? feed.filter((post) => post.circle_id && joinedCircleIds.includes(post.circle_id))
+          : feed,
+        highlights: notifications.slice(0, 5),
+        streak: {
+          ...streak,
+          badge: getBadgeForStreak(streak.current_streak || 0),
+        },
+        insights: {
+          joinedCircles: joinedCircleIds.length,
+          totalPosts: feed.filter((post) => post.author?.id === userId).length,
+          activeCircleCount: new Set(feed.filter((post) => post.author?.id === userId && post.circle_id).map((post) => post.circle_id)).size,
+        },
       };
     },
     async searchCircle(circleId, query, userId) {
@@ -784,6 +1009,8 @@ export function createSupabaseRepository() {
           name,
           description,
           is_private,
+          is_premium,
+          premium_badge,
           invite_code,
           created_by,
           created_at,
@@ -1024,6 +1251,98 @@ export function createSupabaseRepository() {
     async canModerateCircleContent(circleId, userId) {
       const role = await this.getCircleRole(circleId, userId);
       return ['admin', 'moderator'].includes(role);
+    },
+    async getUserSettings(userId) {
+      return ensureUserSettings(userId);
+    },
+    async updateUserSettings(userId, payload) {
+      await ensureUserSettings(userId);
+      const { data, error } = await supabase
+        .from('user_settings')
+        .update({
+          ...payload,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    async getUserAnalytics(userId) {
+      const [profile, streak, postsData, memberships] = await Promise.all([
+        this.getProfile(userId),
+        ensureStreak(userId),
+        supabase.from('posts').select('id, circle_id, created_at, deleted_at').eq('user_id', userId),
+        supabase.from('circle_members').select('circle_id').eq('user_id', userId),
+      ]);
+
+      const visiblePosts = (postsData.data || []).filter((post) => !post.deleted_at);
+      const topCircleId = visiblePosts
+        .reduce((accumulator, post) => {
+          if (!post.circle_id) return accumulator;
+          accumulator[post.circle_id] = (accumulator[post.circle_id] || 0) + 1;
+          return accumulator;
+        }, {});
+      const topCircleEntry = Object.entries(topCircleId).sort((left, right) => right[1] - left[1])[0];
+      const topCircle = topCircleEntry
+        ? (await supabase.from('circles').select('id, name, description, is_private, is_premium, premium_badge').eq('id', topCircleEntry[0]).maybeSingle()).data
+        : null;
+
+      return {
+        totals: {
+          posts: profile?.stats?.totalPosts || 0,
+          reactionsReceived: profile?.user?.total_reactions || profile?.stats?.totalLikesReceived || 0,
+          activeCircles: (memberships.data || []).length,
+        },
+        streak: {
+          ...streak,
+          badge: getBadgeForStreak(streak.current_streak || 0),
+        },
+        weeklyActivity: buildWeeklyActivity(visiblePosts),
+        topCircle,
+      };
+    },
+    async getCircleAnalytics(circleId, userId) {
+      const [circle, role, feed, members, messagesData] = await Promise.all([
+        this.getCircle(circleId, userId),
+        this.getCircleRole(circleId, userId),
+        loadPosts(userId, circleId),
+        this.listCircleMembers(circleId, userId),
+        supabase.from('messages').select('id, user_id, created_at').eq('circle_id', circleId),
+      ]);
+      if (!circle) return null;
+      if (circle.is_private && !role) return null;
+
+      const leaderboard = await Promise.all(
+        members.slice(0, 8).map(async (member) => {
+          const streak = await ensureStreak(member.id);
+          return {
+            ...member,
+            totalPosts: feed.filter((post) => post.author?.id === member.id).length,
+            streak: streak.current_streak || 0,
+            badge: getBadgeForStreak(streak.current_streak || 0),
+          };
+        }),
+      );
+
+      return {
+        circle,
+        totals: {
+          posts: feed.length,
+          activeMembers: new Set(feed.filter((post) => {
+            const age = Date.now() - new Date(post.created_at).getTime();
+            return age <= 7 * 24 * 60 * 60 * 1000;
+          }).map((post) => post.author?.id)).size,
+          messages: (messagesData.data || []).length,
+        },
+        weeklyActivity: buildWeeklyActivity(feed),
+        leaderboard: leaderboard.sort((left, right) => right.streak - left.streak || right.totalPosts - left.totalPosts).slice(0, 5),
+        premium: {
+          enabled: Boolean(circle.is_premium),
+          badge: circle.premium_badge || 'core',
+        },
+      };
     },
   };
 }

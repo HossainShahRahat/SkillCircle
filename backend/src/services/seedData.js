@@ -7,6 +7,8 @@ export const demoUsers = [
     bio: 'Frontend engineer documenting a careful climb into motion design.',
     avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
     skills: ['React', 'Motion', 'Design Systems'],
+    total_posts: 1,
+    total_reactions: 2,
     created_at: '2026-03-20T09:00:00.000Z',
   },
   {
@@ -17,6 +19,8 @@ export const demoUsers = [
     bio: 'Backend builder learning distributed systems one sketch at a time.',
     avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
     skills: ['Node.js', 'Postgres', 'Architecture'],
+    total_posts: 1,
+    total_reactions: 2,
     created_at: '2026-03-18T11:00:00.000Z',
   },
 ];
@@ -27,6 +31,8 @@ export const demoCircles = [
     name: 'React Sprint',
     description: 'Daily build logs, concept breakdowns, and feedback loops for shipping React faster.',
     is_private: false,
+    is_premium: false,
+    premium_badge: 'core',
     invite_code: null,
     created_by: 'u_demo_1',
     created_at: '2026-03-21T10:00:00.000Z',
@@ -36,6 +42,8 @@ export const demoCircles = [
     name: 'System Design Notes',
     description: 'A practical circle for whiteboarding backend architecture and reflecting on tradeoffs.',
     is_private: true,
+    is_premium: true,
+    premium_badge: 'plus',
     invite_code: 'SYS246',
     created_by: 'u_demo_2',
     created_at: '2026-03-22T15:00:00.000Z',
@@ -148,5 +156,41 @@ export const demoReactions = [
     reference_id: 'co_demo_1',
     type: 'celebrate',
     created_at: '2026-03-31T13:10:00.000Z',
+  },
+];
+
+export const demoStreaks = [
+  {
+    user_id: 'u_demo_1',
+    current_streak: 4,
+    last_posted_at: '2026-03-31T12:30:00.000Z',
+  },
+  {
+    user_id: 'u_demo_2',
+    current_streak: 6,
+    last_posted_at: '2026-03-31T18:00:00.000Z',
+  },
+];
+
+export const demoUserSettings = [
+  {
+    user_id: 'u_demo_1',
+    post_visibility: 'public',
+    notify_likes: true,
+    notify_comments: true,
+    notify_mentions: true,
+    notify_joins: true,
+    weekly_digest: false,
+    updated_at: '2026-03-31T08:00:00.000Z',
+  },
+  {
+    user_id: 'u_demo_2',
+    post_visibility: 'circles',
+    notify_likes: true,
+    notify_comments: true,
+    notify_mentions: true,
+    notify_joins: false,
+    weekly_digest: true,
+    updated_at: '2026-03-31T08:00:00.000Z',
   },
 ];

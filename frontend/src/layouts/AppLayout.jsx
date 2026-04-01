@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Menu, Plus } from 'lucide-react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar.jsx';
 import { RightPanel } from '../components/RightPanel.jsx';
 import { CreatePostModal } from '../components/CreatePostModal.jsx';
@@ -14,6 +14,7 @@ import { useAuthStore } from '../store/authStore.js';
 import { useAppStore } from '../store/appStore.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { getSocket } from '../services/socket.js';
+import { navigation } from '../data/navigation.js';
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -34,11 +35,15 @@ export function AppLayout() {
   const ingestRealtimeComment = useAppStore((state) => state.ingestRealtimeComment);
   const ingestRealtimeNotification = useAppStore((state) => state.ingestRealtimeNotification);
   const ingestRealtimeMessage = useAppStore((state) => state.ingestRealtimeMessage);
+  const ingestRealtimeMessageStatus = useAppStore((state) => state.ingestRealtimeMessageStatus);
+  const ingestRealtimeMessageReaction = useAppStore((state) => state.ingestRealtimeMessageReaction);
+  const ingestTyping = useAppStore((state) => state.ingestTyping);
   const ingestRealtimePostUpdate = useAppStore((state) => state.ingestRealtimePostUpdate);
   const ingestRealtimePostDeletion = useAppStore((state) => state.ingestRealtimePostDeletion);
   const ingestRealtimeCommentUpdate = useAppStore((state) => state.ingestRealtimeCommentUpdate);
   const ingestRealtimeCommentDeletion = useAppStore((state) => state.ingestRealtimeCommentDeletion);
   const applyReactionSummary = useAppStore((state) => state.applyReactionSummary);
+  const flushOfflineMessages = useAppStore((state) => state.flushOfflineMessages);
   const submitting = useAppStore((state) => state.submitting);
   const [circleModalOpen, setCircleModalOpen] = useState(false);
   const [joinCodeModalOpen, setJoinCodeModalOpen] = useState(false);
@@ -59,18 +64,29 @@ export function AppLayout() {
     const handleNewComment = ({ postId, comment }) => ingestRealtimeComment(postId, comment);
     const handleNewNotification = ({ notification }) => ingestRealtimeNotification(notification);
     const handleNewMention = ({ notification }) => ingestRealtimeNotification(notification);
-    const handleNewMessage = ({ message }) => ingestRealtimeMessage(message);
+    const handleNewMessage = (payload) => ingestRealtimeMessage(payload);
+    const handleMessageStatus = (payload) => ingestRealtimeMessageStatus(payload);
+    const handleMessageReaction = ({ message }) => ingestRealtimeMessageReaction(message);
+    const handleTyping = (payload) => ingestTyping(payload);
     const handleReactionUpdated = ({ referenceType, referenceId, reactions }) => applyReactionSummary(referenceType, referenceId, reactions);
     const handlePostUpdated = ({ post }) => ingestRealtimePostUpdate(post);
     const handlePostDeleted = ({ postId }) => ingestRealtimePostDeletion(postId);
     const handleCommentUpdated = ({ postId, comment }) => ingestRealtimeCommentUpdate(postId, comment);
     const handleCommentDeleted = ({ postId, commentId }) => ingestRealtimeCommentDeletion(postId, commentId);
 
+    const handleConnect = () => {
+      flushOfflineMessages(user).catch(() => null);
+    };
+
+    socket.on('connect', handleConnect);
     socket.on('new_post', handleNewPost);
     socket.on('new_comment', handleNewComment);
     socket.on('new_notification', handleNewNotification);
     socket.on('new_mention', handleNewMention);
     socket.on('new_message', handleNewMessage);
+    socket.on('message_status_update', handleMessageStatus);
+    socket.on('message_reaction', handleMessageReaction);
+    socket.on('typing', handleTyping);
     socket.on('reaction_updated', handleReactionUpdated);
     socket.on('post_updated', handlePostUpdated);
     socket.on('post_deleted', handlePostDeleted);
@@ -78,18 +94,30 @@ export function AppLayout() {
     socket.on('comment_deleted', handleCommentDeleted);
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('new_post', handleNewPost);
       socket.off('new_comment', handleNewComment);
       socket.off('new_notification', handleNewNotification);
       socket.off('new_mention', handleNewMention);
       socket.off('new_message', handleNewMessage);
+      socket.off('message_status_update', handleMessageStatus);
+      socket.off('message_reaction', handleMessageReaction);
+      socket.off('typing', handleTyping);
       socket.off('reaction_updated', handleReactionUpdated);
       socket.off('post_updated', handlePostUpdated);
       socket.off('post_deleted', handlePostDeleted);
       socket.off('comment_updated', handleCommentUpdated);
       socket.off('comment_deleted', handleCommentDeleted);
     };
-  }, [token, ingestRealtimePost, ingestRealtimeComment, ingestRealtimeNotification, ingestRealtimeMessage, ingestRealtimePostUpdate, ingestRealtimePostDeletion, ingestRealtimeCommentUpdate, ingestRealtimeCommentDeletion, applyReactionSummary]);
+  }, [token, user, ingestRealtimePost, ingestRealtimeComment, ingestRealtimeNotification, ingestRealtimeMessage, ingestRealtimeMessageStatus, ingestRealtimeMessageReaction, ingestTyping, ingestRealtimePostUpdate, ingestRealtimePostDeletion, ingestRealtimeCommentUpdate, ingestRealtimeCommentDeletion, applyReactionSummary, flushOfflineMessages]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      flushOfflineMessages(user).catch(() => null);
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [flushOfflineMessages, user]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-3 py-4 sm:px-4 lg:flex-row lg:px-6 lg:py-6">
@@ -119,6 +147,18 @@ export function AppLayout() {
 
         {mobileNavOpen ? (
           <div className="surface-card mb-5 space-y-3 p-4 xl:hidden">
+            <div className="grid gap-2">
+              {navigation.map(({ label, path }) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  className="rounded-2xl border px-4 py-3 text-sm font-semibold transition hover:bg-[rgb(var(--bg-soft))]"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </div>
             {circles.slice(0, 4).map((circle) => (
               <button
                 key={circle.id}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Settings2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+import { ActivityBars } from '../components/ActivityBars.jsx';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { CircleBadge } from '../components/CircleBadge.jsx';
@@ -11,6 +12,7 @@ import { PostCard } from '../components/PostCard.jsx';
 import { useAppStore } from '../store/appStore.js';
 import { useAuthStore } from '../store/authStore.js';
 import { getSocket } from '../services/socket.js';
+import { StreakBadge } from '../components/StreakBadge.jsx';
 
 export function CirclePage() {
   const { circleId } = useParams();
@@ -24,9 +26,15 @@ export function CirclePage() {
   const clearCircleSearch = useAppStore((state) => state.clearCircleSearch);
   const circleSearchResults = useAppStore((state) => state.circleSearchResults);
   const circleSearchLoading = useAppStore((state) => state.circleSearchLoading);
+  const circleAnalytics = useAppStore((state) => state.circleAnalytics);
+  const loadCircleAnalytics = useAppStore((state) => state.loadCircleAnalytics);
   const messages = useAppStore((state) => state.messages);
   const messagesLoading = useAppStore((state) => state.messagesLoading);
   const sendMessage = useAppStore((state) => state.sendMessage);
+  const markCircleMessages = useAppStore((state) => state.markCircleMessages);
+  const reactToCircleMessage = useAppStore((state) => state.reactToCircleMessage);
+  const typingState = useAppStore((state) => state.typingState);
+  const setTyping = useAppStore((state) => state.setTyping);
   const clearMessages = useAppStore((state) => state.clearMessages);
   const joinCircle = useAppStore((state) => state.joinCircle);
   const joinCircleByCode = useAppStore((state) => state.joinCircleByCode);
@@ -42,6 +50,8 @@ export function CirclePage() {
   const showToast = useAppStore((state) => state.showToast);
   const [joinCodeModalOpen, setJoinCodeModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [chatDraft, setChatDraft] = useState('');
 
   useEffect(() => {
     loadCircle(circleId);
@@ -59,9 +69,14 @@ export function CirclePage() {
 
   useEffect(() => {
     if (activeCircle?.joined) {
-      loadMessages(circleId);
+      loadMessages(circleId).then(() => markCircleMessages(circleId, 'read')).catch(() => null);
+      loadCircleAnalytics(circleId).catch(() => null);
     }
-  }, [activeCircle?.joined, circleId, loadMessages]);
+  }, [activeCircle?.joined, circleId, loadMessages, loadCircleAnalytics, markCircleMessages]);
+
+  const typingUsers = (typingState.circle?.[circleId] || [])
+    .filter((entry) => entry.user.id !== user?.id)
+    .map((entry) => entry.user.name);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -100,6 +115,12 @@ export function CirclePage() {
                 <p className="text-xs uppercase tracking-[0.18em] text-white/60">Members</p>
                 <p className="mt-1 text-xl font-bold">{activeCircle.membersCount}</p>
               </div>
+              {activeCircle.is_premium ? (
+                <div className="rounded-2xl bg-white/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/60">Access</p>
+                  <p className="mt-1 text-xl font-bold">{activeCircle.premium_badge || 'Plus'}</p>
+                </div>
+              ) : null}
               {activeCircle.joined && activeCircle.myRole === 'admin' ? (
                 <div className="rounded-2xl bg-white/10 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.18em] text-white/60">Invite code</p>
@@ -218,6 +239,28 @@ export function CirclePage() {
             ) : null}
           </Card>
 
+          {activeCircle.joined && circleAnalytics ? (
+            <Card className="p-5">
+              <div className="mb-4">
+                <p className="text-lg font-bold">Circle insights</p>
+                <p className="muted-copy">A quick read on activity, consistency, and member momentum.</p>
+              </div>
+              <div className="mb-5 grid grid-cols-3 gap-3">
+                {[
+                  [circleAnalytics.totals?.posts || 0, 'Posts'],
+                  [circleAnalytics.totals?.activeMembers || 0, 'Active'],
+                  [circleAnalytics.totals?.messages || 0, 'Messages'],
+                ].map(([value, label]) => (
+                  <div key={label} className="rounded-2xl bg-[rgb(var(--bg-soft))] p-4">
+                    <p className="text-2xl font-bold">{value}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">{label}</p>
+                  </div>
+                ))}
+              </div>
+              <ActivityBars points={circleAnalytics.weeklyActivity || []} />
+            </Card>
+          ) : null}
+
           {posts.length ? (
             posts.map((post) => (
               <PostCard
@@ -244,11 +287,45 @@ export function CirclePage() {
 
         {activeCircle.joined ? (
           <div className="space-y-5">
+            {circleAnalytics?.leaderboard?.length ? (
+              <Card className="p-5">
+                <div className="mb-4">
+                  <p className="text-lg font-bold">Leaderboard</p>
+                  <p className="muted-copy">Subtle rewards for consistency inside this circle.</p>
+                </div>
+                <div className="space-y-3">
+                  {circleAnalytics.leaderboard.map((member) => (
+                    <div key={member.id} className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">{member.name}</p>
+                          <p className="text-sm text-[rgb(var(--muted))]">{member.totalPosts} posts in this circle</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{member.streak}d</p>
+                          <StreakBadge badge={member.badge} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
             <CircleChatPanel
               messages={messages}
-              user={user}
-              loading={messagesLoading}
-              onSend={(content) => sendMessage(circleId, content)}
+              currentUser={user}
+              typingUsers={typingUsers}
+              draft={chatDraft}
+              onDraftChange={setChatDraft}
+              onSend={async ({ content, attachment }) => {
+                await sendMessage(circleId, { content, attachment }, user);
+                setChatDraft('');
+                setTyping('circle', circleId, false);
+              }}
+              onTyping={(value) => setTyping('circle', circleId, Boolean(value))}
+              searchQuery={chatSearchQuery}
+              onSearchChange={setChatSearchQuery}
+              onReact={(messageId, emoji) => reactToCircleMessage(messageId, emoji)}
             />
             <CircleMemberPanel
               members={activeCircle.members || []}

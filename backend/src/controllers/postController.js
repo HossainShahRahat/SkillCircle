@@ -9,6 +9,15 @@ function badRequest(message) {
   return error;
 }
 
+async function notifyIfEnabled(userId, key, buildNotification, event = 'new_notification') {
+  const settings = await repository.getUserSettings?.(userId);
+  if (settings && settings[key] === false) {
+    return;
+  }
+  const notification = await buildNotification();
+  emitToUser(userId, event, { notification });
+}
+
 export async function listPosts(req, res, next) {
   try {
     const circleId = req.query.circleId || null;
@@ -39,7 +48,16 @@ export async function createPost(req, res, next) {
       emitToCircle(post.circle_id, 'new_post', { post });
     }
 
-    res.status(201).json({ post });
+    const [dashboard, analytics] = await Promise.all([
+      repository.getDashboard?.(req.user.id),
+      repository.getUserAnalytics?.(req.user.id),
+    ]);
+
+    res.status(201).json({
+      post,
+      streak: dashboard?.streak || analytics?.streak || null,
+      insights: dashboard?.insights || analytics?.totals || null,
+    });
   } catch (error) {
     next(error);
   }
@@ -49,13 +67,12 @@ export async function toggleLike(req, res, next) {
   try {
     const result = await repository.toggleLike(req.params.postId, req.user.id);
     if (result.notificationTargetUserId) {
-      const notification = await repository.createNotification({
+      await notifyIfEnabled(result.notificationTargetUserId, 'notify_likes', () => repository.createNotification({
         userId: result.notificationTargetUserId,
         type: 'like',
         referenceId: req.params.postId,
         triggeredBy: req.user.id,
-      });
-      emitToUser(result.notificationTargetUserId, 'new_notification', { notification });
+      }));
     }
     res.json(result);
   } catch (error) {
@@ -83,27 +100,22 @@ export async function addComment(req, res, next) {
     );
 
     if (comment.notificationTargetUserId) {
-      const notification = await repository.createNotification({
+      await notifyIfEnabled(comment.notificationTargetUserId, 'notify_comments', () => repository.createNotification({
         userId: comment.notificationTargetUserId,
         type: 'comment',
         referenceId: req.params.postId,
         triggeredBy: req.user.id,
-      });
-      emitToUser(comment.notificationTargetUserId, 'new_notification', { notification });
+      }));
     }
     await Promise.all(
       mentionedUsers
         .filter((mentionedUser) => mentionedUser.id !== req.user.id && mentionedUser.id !== comment.notificationTargetUserId)
-        .map(async (mentionedUser) => {
-          const notification = await repository.createNotification({
+        .map((mentionedUser) => notifyIfEnabled(mentionedUser.id, 'notify_mentions', () => repository.createNotification({
             userId: mentionedUser.id,
             type: 'mention',
             referenceId: req.params.postId,
             triggeredBy: req.user.id,
-          });
-          emitToUser(mentionedUser.id, 'new_notification', { notification });
-          emitToUser(mentionedUser.id, 'new_mention', { notification });
-        }),
+          }), 'new_mention')),
     );
     emitGlobal('new_comment', { postId: req.params.postId, comment });
     if (post?.circle_id) {

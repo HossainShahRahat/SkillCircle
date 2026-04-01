@@ -7,6 +7,20 @@ function badRequest(message) {
   return error;
 }
 
+async function notifyJoinIfEnabled(userId, referenceId, triggeredBy) {
+  const settings = await repository.getUserSettings?.(userId);
+  if (settings && settings.notify_joins === false) {
+    return;
+  }
+  const notification = await repository.createNotification({
+    userId,
+    type: 'join',
+    referenceId,
+    triggeredBy,
+  });
+  emitToUser(userId, 'new_notification', { notification });
+}
+
 export async function listCircles(req, res, next) {
   try {
     const circles = await repository.listCircles(req.user?.id || null);
@@ -40,13 +54,7 @@ export async function joinCircle(req, res, next) {
   try {
     const result = await repository.joinCircle(req.params.circleId, req.user.id);
     if (result.notificationTargetUserId) {
-      const notification = await repository.createNotification({
-        userId: result.notificationTargetUserId,
-        type: 'join',
-        referenceId: req.params.circleId,
-        triggeredBy: req.user.id,
-      });
-      emitToUser(result.notificationTargetUserId, 'new_notification', { notification });
+      await notifyJoinIfEnabled(result.notificationTargetUserId, req.params.circleId, req.user.id);
     }
     res.json(result);
   } catch (error) {
@@ -63,13 +71,7 @@ export async function joinCircleByCode(req, res, next) {
 
     const result = await repository.joinCircleByCode(code, req.user.id);
     if (result.notificationTargetUserId) {
-      const notification = await repository.createNotification({
-        userId: result.notificationTargetUserId,
-        type: 'join',
-        referenceId: result.circle.id,
-        triggeredBy: req.user.id,
-      });
-      emitToUser(result.notificationTargetUserId, 'new_notification', { notification });
+      await notifyJoinIfEnabled(result.notificationTargetUserId, result.circle.id, req.user.id);
     }
     res.json(result);
   } catch (error) {
