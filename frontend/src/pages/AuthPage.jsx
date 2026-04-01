@@ -31,8 +31,12 @@ export function AuthPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    await authenticate(mode, form);
-    navigate('/');
+    try {
+      await authenticate(mode, form);
+      navigate('/');
+    } catch (_error) {
+      // The auth store already surfaces the message in the form UI.
+    }
   }
 
   return (
@@ -133,11 +137,22 @@ export function AuthPage() {
 
             <div className="mt-6 rounded-[24px] bg-[rgb(var(--bg-soft))] p-4">
               <p className="text-sm font-semibold">Demo credentials</p>
-              {demoAccounts.map((account, index) => (
-                <p key={account.email} className={`${index === 0 ? 'mt-2' : 'mt-1'} text-sm text-[rgb(var(--muted))]`}>
-                  {account.email} / {account.password}
-                </p>
-              ))}
+              <div className="mt-3 space-y-2">
+                {demoAccounts.map((account) => (
+                  <button
+                    key={account.email}
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-elevated))] px-4 py-3 text-left transition hover:border-[rgb(var(--text))]/20 hover:shadow-sm"
+                    onClick={() => setForm((current) => ({ ...current, email: account.email, password: account.password }))}
+                  >
+                    <span>
+                      <span className="block text-sm font-medium text-[rgb(var(--text))]">{account.email}</span>
+                      <span className="block text-xs text-[rgb(var(--muted))]">{account.password}</span>
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[rgb(var(--muted))]">Use</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </Card>
