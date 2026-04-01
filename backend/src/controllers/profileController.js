@@ -6,8 +6,13 @@ function badRequest(message) {
   return error;
 }
 
-export async function getProfile(req, res) {
-  res.json({ user: req.user });
+export async function getProfile(req, res, next) {
+  try {
+    const profile = await repository.getProfile(req.user.id, req.user.id);
+    res.json(profile);
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function updateProfile(req, res, next) {
@@ -30,3 +35,15 @@ export async function updateProfile(req, res, next) {
   }
 }
 
+export async function getPublicProfile(req, res, next) {
+  try {
+    const profile = await repository.getProfile(req.params.userId, req.user?.id || null);
+    if (!profile) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    res.json(profile);
+  } catch (error) {
+    next(error);
+  }
+}

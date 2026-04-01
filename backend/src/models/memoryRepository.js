@@ -4,6 +4,7 @@ import {
   demoCircles,
   demoComments,
   demoLikes,
+  demoNotifications,
   demoPosts,
   demoUsers,
 } from '../services/seedData.js';
@@ -59,17 +60,49 @@ function generateInviteCode(existingCircles) {
   return code;
 }
 
+function serializeNotification(notification, users, posts, circles) {
+  const actor = publicUser(users.find((user) => user.id === notification.triggered_by));
+  const post = posts.find((item) => item.id === notification.reference_id) || null;
+  const circle = circles.find((item) => item.id === notification.reference_id) || null;
+
+  return {
+    ...notification,
+    actor,
+    post_id: post?.id || null,
+    circle_id: circle?.id || post?.circle_id || null,
+  };
+}
+
+function profileStats(userId, posts, likes, circleMembers) {
+  const userPosts = posts.filter((post) => post.user_id === userId);
+  return {
+    totalPosts: userPosts.length,
+    totalLikesReceived: likes.filter((like) => userPosts.some((post) => post.id === like.post_id)).length,
+    circlesJoined: circleMembers.filter((member) => member.user_id === userId).length,
+  };
+}
+
 export function createMemoryRepository() {
   const users = structuredClone(demoUsers);
   const posts = structuredClone(demoPosts);
   const comments = structuredClone(demoComments);
   const likes = structuredClone(demoLikes);
+  const notifications = structuredClone(demoNotifications);
   const circles = structuredClone(demoCircles);
   const circleMembers = structuredClone(demoCircleMembers);
 
   return {
     async findUserById(id) {
       return publicUser(users.find((user) => user.id === id));
+    },
+    async getProfile(userId) {
+      const user = users.find((item) => item.id === userId);
+      if (!user) return null;
+
+      return {
+        user: publicUser(user),
+        stats: profileStats(userId, posts, likes, circleMembers),
+      };
     },
     async findUserWithPasswordByEmail(email) {
       return users.find((user) => user.email.toLowerCase() === email.toLowerCase()) || null;
@@ -121,10 +154,11 @@ export function createMemoryRepository() {
       return enrichPost(post, users, circles, comments, likes, userId);
     },
     async toggleLike(postId, userId) {
+      const post = posts.find((item) => item.id === postId);
       const existing = likes.find((like) => like.post_id === postId && like.user_id === userId);
       if (existing) {
         likes.splice(likes.indexOf(existing), 1);
-        return { liked: false };
+        return { liked: false, notificationTargetUserId: null };
       }
 
       likes.push({
@@ -133,9 +167,13 @@ export function createMemoryRepository() {
         post_id: postId,
         created_at: new Date().toISOString(),
       });
-      return { liked: true };
+      return {
+        liked: true,
+        notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
+      };
     },
     async addComment(postId, userId, content) {
+      const post = posts.find((item) => item.id === postId);
       const comment = {
         id: `co_${nanoid(10)}`,
         user_id: userId,
@@ -147,6 +185,7 @@ export function createMemoryRepository() {
       return {
         ...comment,
         author: publicUser(users.find((user) => user.id === userId)),
+        notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
       };
     },
     async listCircles(userId) {
@@ -196,7 +235,10 @@ export function createMemoryRepository() {
         });
       }
 
-      return { joined: true };
+      return {
+        joined: true,
+        notificationTargetUserId: circle.created_by !== userId ? circle.created_by : null,
+      };
     },
     async joinCircleByCode(code, userId) {
       const circle = circles.find((item) => item.invite_code === code?.trim().toUpperCase());
@@ -217,7 +259,11 @@ export function createMemoryRepository() {
         });
       }
 
-      return { joined: true, circle: serializeCircle(circle, circleMembers, userId) };
+      return {
+        joined: true,
+        circle: serializeCircle(circle, circleMembers, userId),
+        notificationTargetUserId: circle.created_by !== userId ? circle.created_by : null,
+      };
     },
     async leaveCircle(circleId, userId) {
       const membership = getMembership(circleMembers, circleId, userId);
@@ -250,6 +296,53 @@ export function createMemoryRepository() {
       return {
         ...serializeCircle(circle, circleMembers, userId),
         invite_code: membership?.role === 'admin' ? circle.invite_code : null,
+      };
+    },
+    async createNotification({ userId, type, referenceId, triggeredBy }) {
+      if (!userId || userId === triggeredBy) return null;
+      const notification = {
+        id: `n_${nanoid(10)}`,
+        user_id: userId,
+        type,
+        reference_id: referenceId,
+        triggered_by: triggeredBy,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+      notifications.unshift(notification);
+      return serializeNotification(notification, users, posts, circles);
+    },
+    async listNotifications(userId) {
+      return notifications
+        .filter((notification) => notification.user_id === userId)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .map((notification) => serializeNotification(notification, users, posts, circles));
+    },
+    async markNotificationRead(notificationId, userId) {
+      const notification = notifications.find((item) => item.id === notificationId && item.user_id === userId);
+      if (!notification) {
+        const error = new Error('Notification not found.');
+        error.status = 404;
+        throw error;
+      }
+      notification.is_read = true;
+      return serializeNotification(notification, users, posts, circles);
+    },
+    async search(query, userId) {
+      const normalizedQuery = query.toLowerCase();
+      const matchedUsers = users
+        .filter((user) => user.name.toLowerCase().includes(normalizedQuery))
+        .slice(0, 6)
+        .map((user) => publicUser(user));
+      const matchedCircles = circles
+        .filter((circle) => circle.name.toLowerCase().includes(normalizedQuery))
+        .filter((circle) => !circle.is_private || Boolean(getMembership(circleMembers, circle.id, userId)))
+        .slice(0, 6)
+        .map((circle) => serializeCircle(circle, circleMembers, userId));
+
+      return {
+        users: matchedUsers,
+        circles: matchedCircles,
       };
     },
   };

@@ -27,6 +27,15 @@ function generateInviteCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
+function profileStatsFromData(userId, posts, likes, circleMembers) {
+  const userPosts = posts.filter((post) => post.user_id === userId);
+  return {
+    totalPosts: userPosts.length,
+    totalLikesReceived: likes.filter((like) => userPosts.some((post) => post.id === like.post_id)).length,
+    circlesJoined: circleMembers.filter((member) => member.user_id === userId).length,
+  };
+}
+
 export function createSupabaseRepository() {
   const supabase = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
     auth: {
@@ -115,6 +124,29 @@ export function createSupabaseRepository() {
       if (error) throw error;
       return data;
     },
+    async getProfile(userId) {
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, name, email, bio, avatar_url, skills, created_at')
+        .eq('id', userId)
+        .maybeSingle();
+      if (userError) throw userError;
+      if (!user) return null;
+
+      const [{ data: postsData, error: postsError }, { data: likesData, error: likesError }, { data: membersData, error: membersError }] = await Promise.all([
+        supabase.from('posts').select('id, user_id').eq('user_id', userId),
+        supabase.from('likes').select('id, post_id'),
+        supabase.from('circle_members').select('id, user_id').eq('user_id', userId),
+      ]);
+      if (postsError) throw postsError;
+      if (likesError) throw likesError;
+      if (membersError) throw membersError;
+
+      return {
+        user,
+        stats: profileStatsFromData(userId, postsData || [], likesData || [], membersData || []),
+      };
+    },
     async findUserWithPasswordByEmail(email) {
       const { data, error } = await supabase
         .from('users')
@@ -165,6 +197,13 @@ export function createSupabaseRepository() {
       return posts[0];
     },
     async toggleLike(postId, userId) {
+      const { data: post, error: postError } = await supabase
+        .from('posts')
+        .select('id, user_id')
+        .eq('id', postId)
+        .maybeSingle();
+      if (postError) throw postError;
+
       const { data: existing, error: existingError } = await supabase
         .from('likes')
         .select('id')
@@ -176,14 +215,24 @@ export function createSupabaseRepository() {
       if (existing) {
         const { error } = await supabase.from('likes').delete().eq('id', existing.id);
         if (error) throw error;
-        return { liked: false };
+        return { liked: false, notificationTargetUserId: null };
       }
 
       const { error } = await supabase.from('likes').insert({ post_id: postId, user_id: userId });
       if (error) throw error;
-      return { liked: true };
+      return {
+        liked: true,
+        notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
+      };
     },
     async addComment(postId, userId, content) {
+      const { data: post, error: postError } = await supabase
+        .from('posts')
+        .select('id, user_id')
+        .eq('id', postId)
+        .maybeSingle();
+      if (postError) throw postError;
+
       const { data, error } = await supabase
         .from('comments')
         .insert({ post_id: postId, user_id: userId, content })
@@ -200,6 +249,7 @@ export function createSupabaseRepository() {
       return {
         ...data,
         author: mapUser(data.users),
+        notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
       };
     },
     async listCircles(userId) {
@@ -264,7 +314,7 @@ export function createSupabaseRepository() {
     async joinCircle(circleId, userId) {
       const { data: circle, error: circleError } = await supabase
         .from('circles')
-        .select('id, is_private')
+        .select('id, is_private, created_by')
         .eq('id', circleId)
         .maybeSingle();
       if (circleError) throw circleError;
@@ -288,7 +338,10 @@ export function createSupabaseRepository() {
         { onConflict: 'user_id,circle_id', ignoreDuplicates: true },
       );
       if (error) throw error;
-      return { joined: true };
+      return {
+        joined: true,
+        notificationTargetUserId: circle.created_by !== userId ? circle.created_by : null,
+      };
     },
     async joinCircleByCode(code, userId) {
       const normalizedCode = code?.trim().toUpperCase();
@@ -339,7 +392,11 @@ export function createSupabaseRepository() {
         .single();
       if (updatedCircleError) throw updatedCircleError;
 
-      return { joined: true, circle: normalizeCircle(updatedCircle, userId) };
+      return {
+        joined: true,
+        circle: normalizeCircle(updatedCircle, userId),
+        notificationTargetUserId: circle.created_by !== userId ? circle.created_by : null,
+      };
     },
     async leaveCircle(circleId, userId) {
       const { data: membership, error: membershipError } = await supabase
@@ -383,6 +440,150 @@ export function createSupabaseRepository() {
       if (!data) return null;
 
       return normalizeCircle(data, userId);
+    },
+    async createNotification({ userId, type, referenceId, triggeredBy }) {
+      if (!userId || userId === triggeredBy) return null;
+      let postCircleId = null;
+      if (['like', 'comment'].includes(type)) {
+        const { data: post } = await supabase
+          .from('posts')
+          .select('id, circle_id')
+          .eq('id', referenceId)
+          .maybeSingle();
+        postCircleId = post?.circle_id || null;
+      }
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          type,
+          reference_id: referenceId,
+          triggered_by: triggeredBy,
+        })
+        .select(`
+          id,
+          user_id,
+          type,
+          reference_id,
+          triggered_by,
+          is_read,
+          created_at,
+          users:triggered_by ( id, name, email, bio, avatar_url, skills, created_at )
+        `)
+        .single();
+      if (error) throw error;
+      return {
+        ...data,
+        actor: mapUser(data.users),
+        post_id: ['like', 'comment'].includes(type) ? referenceId : null,
+        circle_id: type === 'join' ? referenceId : postCircleId,
+      };
+    },
+    async listNotifications(userId) {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select(`
+          id,
+          user_id,
+          type,
+          reference_id,
+          triggered_by,
+          is_read,
+          created_at,
+          users:triggered_by ( id, name, email, bio, avatar_url, skills, created_at )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const postIds = data
+        .filter((notification) => ['like', 'comment'].includes(notification.type))
+        .map((notification) => notification.reference_id);
+      const { data: relatedPosts } = postIds.length
+        ? await supabase.from('posts').select('id, circle_id').in('id', postIds)
+        : { data: [] };
+      const postCircleMap = new Map((relatedPosts || []).map((post) => [post.id, post.circle_id]));
+
+      return data.map((notification) => ({
+        ...notification,
+        actor: mapUser(notification.users),
+        post_id: ['like', 'comment'].includes(notification.type) ? notification.reference_id : null,
+        circle_id: notification.type === 'join'
+          ? notification.reference_id
+          : postCircleMap.get(notification.reference_id) || null,
+      }));
+    },
+    async markNotificationRead(notificationId, userId) {
+      const { data, error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId)
+        .eq('user_id', userId)
+        .select(`
+          id,
+          user_id,
+          type,
+          reference_id,
+          triggered_by,
+          is_read,
+          created_at,
+          users:triggered_by ( id, name, email, bio, avatar_url, skills, created_at )
+        `)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        const notFound = new Error('Notification not found.');
+        notFound.status = 404;
+        throw notFound;
+      }
+
+      let postCircleId = null;
+      if (['like', 'comment'].includes(data.type)) {
+        const { data: post } = await supabase
+          .from('posts')
+          .select('id, circle_id')
+          .eq('id', data.reference_id)
+          .maybeSingle();
+        postCircleId = post?.circle_id || null;
+      }
+
+      return {
+        ...data,
+        actor: mapUser(data.users),
+        post_id: ['like', 'comment'].includes(data.type) ? data.reference_id : null,
+        circle_id: data.type === 'join' ? data.reference_id : postCircleId,
+      };
+    },
+    async search(query, userId) {
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email, bio, avatar_url, skills, created_at')
+        .ilike('name', `%${query}%`)
+        .limit(6);
+      if (usersError) throw usersError;
+
+      const { data: circlesData, error: circlesError } = await supabase
+        .from('circles')
+        .select(`
+          id,
+          name,
+          description,
+          is_private,
+          invite_code,
+          created_by,
+          created_at,
+          circle_members ( user_id, role )
+        `)
+        .ilike('name', `%${query}%`)
+        .limit(6);
+      if (circlesError) throw circlesError;
+
+      return {
+        users: usersData || [],
+        circles: (circlesData || [])
+          .filter((circle) => !circle.is_private || (circle.circle_members || []).some((member) => member.user_id === userId))
+          .map((circle) => normalizeCircle(circle, userId)),
+      };
     },
   };
 }

@@ -59,7 +59,20 @@ create table if not exists likes (
   unique (user_id, post_id)
 );
 
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  type text not null check (type in ('like', 'comment', 'join')),
+  reference_id uuid not null,
+  triggered_by uuid not null references users(id) on delete cascade,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_posts_created_at on posts (created_at desc);
 create index if not exists idx_comments_post_id on comments (post_id);
 create index if not exists idx_likes_post_id on likes (post_id);
 create index if not exists idx_circle_members_circle_id on circle_members (circle_id);
+create index if not exists idx_notifications_user_id on notifications (user_id, created_at desc);
+
+alter table notifications add column if not exists is_read boolean not null default false;

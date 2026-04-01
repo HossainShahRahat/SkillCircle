@@ -41,6 +41,14 @@ export async function createPost(req, res, next) {
 export async function toggleLike(req, res, next) {
   try {
     const result = await repository.toggleLike(req.params.postId, req.user.id);
+    if (result.notificationTargetUserId) {
+      await repository.createNotification({
+        userId: result.notificationTargetUserId,
+        type: 'like',
+        referenceId: req.params.postId,
+        triggeredBy: req.user.id,
+      });
+    }
     res.json(result);
   } catch (error) {
     next(error);
@@ -55,9 +63,16 @@ export async function addComment(req, res, next) {
     }
 
     const comment = await repository.addComment(req.params.postId, req.user.id, content.trim());
+    if (comment.notificationTargetUserId) {
+      await repository.createNotification({
+        userId: comment.notificationTargetUserId,
+        type: 'comment',
+        referenceId: req.params.postId,
+        triggeredBy: req.user.id,
+      });
+    }
     res.status(201).json({ comment });
   } catch (error) {
     next(error);
   }
 }
-

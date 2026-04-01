@@ -30,6 +30,11 @@ export const api = {
     request(path, {
       method: 'DELETE',
     }),
+  patch: (path, body) =>
+    request(path, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
   put: (path, body) =>
     request(path, {
       method: 'PUT',

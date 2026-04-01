@@ -11,6 +11,10 @@ export const useAppStore = create((set, get) => ({
   modalOpen: false,
   error: '',
   toasts: [],
+  notifications: [],
+  notificationsLoading: false,
+  searchResults: { users: [], circles: [] },
+  searchLoading: false,
   async loadFeed(circleId = null) {
     set({ loadingFeed: true, error: '' });
     try {
@@ -158,6 +162,42 @@ export const useAppStore = create((set, get) => ({
     });
     get().showToast('Left circle successfully.');
     return result;
+  },
+  async loadNotifications() {
+    set({ notificationsLoading: true });
+    try {
+      const data = await api.get('/notifications');
+      set({ notifications: data.notifications, notificationsLoading: false });
+    } catch (error) {
+      set({ notificationsLoading: false, error: error.message });
+    }
+  },
+  async markNotificationRead(notificationId) {
+    const data = await api.patch(`/notifications/${notificationId}/read`, {});
+    set({
+      notifications: get().notifications.map((notification) =>
+        notification.id === notificationId ? { ...notification, ...data.notification } : notification,
+      ),
+    });
+    return data.notification;
+  },
+  async search(keyword) {
+    if (!keyword.trim()) {
+      set({ searchResults: { users: [], circles: [] }, searchLoading: false });
+      return { users: [], circles: [] };
+    }
+    set({ searchLoading: true });
+    try {
+      const data = await api.get(`/search?q=${encodeURIComponent(keyword)}`);
+      set({ searchResults: data, searchLoading: false });
+      return data;
+    } catch (error) {
+      set({ searchLoading: false, error: error.message });
+      return { users: [], circles: [] };
+    }
+  },
+  clearSearch() {
+    set({ searchResults: { users: [], circles: [] }, searchLoading: false });
   },
   setModalOpen(modalOpen) {
     set({ modalOpen });

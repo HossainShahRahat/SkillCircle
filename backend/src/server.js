@@ -6,6 +6,8 @@ import { authRoutes } from './routes/authRoutes.js';
 import { profileRoutes } from './routes/profileRoutes.js';
 import { postRoutes } from './routes/postRoutes.js';
 import { circleRoutes } from './routes/circleRoutes.js';
+import { notificationRoutes } from './routes/notificationRoutes.js';
+import { searchRoutes } from './routes/searchRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { attachCurrentUser } from './middleware/authMiddleware.js';
 
@@ -29,10 +31,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/circles', circleRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/search', searchRoutes);
 
 app.use(errorHandler);
 
 app.listen(config.port, () => {
   console.log(`SkillCircle API listening on http://localhost:${config.port}`);
 });
-

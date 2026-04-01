@@ -86,3 +86,15 @@ export const demoLikes = [
   { id: 'l_demo_1', user_id: 'u_demo_2', post_id: 'p_demo_1', created_at: '2026-03-31T13:05:00.000Z' },
   { id: 'l_demo_2', user_id: 'u_demo_1', post_id: 'p_demo_2', created_at: '2026-03-31T19:00:00.000Z' },
 ];
+
+export const demoNotifications = [
+  {
+    id: 'n_demo_1',
+    user_id: 'u_demo_1',
+    type: 'like',
+    reference_id: 'p_demo_1',
+    triggered_by: 'u_demo_2',
+    is_read: false,
+    created_at: '2026-03-31T13:05:00.000Z',
+  },
+];

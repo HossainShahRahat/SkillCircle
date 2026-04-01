@@ -33,10 +33,10 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: '/profile', element: <ProfilePage /> },
+          { path: '/profile/:userId', element: <ProfilePage /> },
           { path: '/circles/:circleId', element: <CirclePage /> },
         ],
       },
     ],
   },
 ]);
-

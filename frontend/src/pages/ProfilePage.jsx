@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { Card } from '../components/Card.jsx';
 import { Input } from '../components/Input.jsx';
@@ -10,21 +11,49 @@ import { api } from '../services/api.js';
 import { useAppStore } from '../store/appStore.js';
 
 export function ProfilePage() {
-  const user = useAuthStore((state) => state.user);
+  const { userId } = useParams();
+  const authUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const posts = useAppStore((state) => state.posts);
+  const [profileUser, setProfileUser] = useState(authUser);
+  const [stats, setStats] = useState({ totalPosts: 0, totalLikesReceived: 0, circlesJoined: 0 });
   const [form, setForm] = useState({
-    name: user?.name || '',
-    bio: user?.bio || '',
-    avatar_url: user?.avatar_url || '',
-    skills: (user?.skills || []).join(', '),
+    name: authUser?.name || '',
+    bio: authUser?.bio || '',
+    avatar_url: authUser?.avatar_url || '',
+    skills: (authUser?.skills || []).join(', '),
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const isOwnProfile = !userId || userId === authUser?.id;
+
+  useEffect(() => {
+    async function loadProfile() {
+      setLoading(true);
+      const endpoint = isOwnProfile ? '/profile' : `/profile/${userId}`;
+      try {
+        const data = await api.get(endpoint);
+        setProfileUser(data.user);
+        setStats(data.stats || { totalPosts: 0, totalLikesReceived: 0, circlesJoined: 0 });
+        setForm({
+          name: data.user?.name || '',
+          bio: data.user?.bio || '',
+          avatar_url: data.user?.avatar_url || '',
+          skills: (data.user?.skills || []).join(', '),
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, [isOwnProfile, userId]);
 
   const myPosts = useMemo(
-    () => posts.filter((post) => post.author?.id === user?.id).slice(0, 3),
-    [posts, user],
+    () => posts.filter((post) => post.author?.id === profileUser?.id).slice(0, 3),
+    [posts, profileUser],
   );
 
   async function handleSubmit(event) {
@@ -37,6 +66,7 @@ export function ProfilePage() {
         skills: form.skills.split(',').map((item) => item.trim()).filter(Boolean),
       });
       setUser(data.user);
+      setProfileUser(data.user);
       setMessage('Profile updated.');
     } finally {
       setSaving(false);
@@ -48,7 +78,7 @@ export function ProfilePage() {
       <Card className="p-6 md:p-8">
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-[32px] bg-[rgb(var(--bg-soft))] p-6">
-            <Avatar user={{ ...user, avatar_url: form.avatar_url || user?.avatar_url }} size="lg" />
+            {loading ? <div className="h-16 w-16 animate-pulse rounded-2xl bg-[rgb(var(--bg-elevated))]" /> : <Avatar user={{ ...profileUser, avatar_url: form.avatar_url || profileUser?.avatar_url }} size="lg" />}
             <h1 className="mt-5 text-3xl font-bold">{form.name || 'Your profile'}</h1>
             <p className="mt-3 text-sm leading-7 text-[rgb(var(--muted))]">
               {form.bio || 'Your profile is where your learning identity becomes legible. Add a grounded bio and a few skills people can recognize instantly.'}
@@ -60,9 +90,22 @@ export function ProfilePage() {
                 </span>
               ))}
             </div>
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {[
+                [stats.totalPosts, 'Posts'],
+                [stats.totalLikesReceived, 'Likes received'],
+                [stats.circlesJoined, 'Circles'],
+              ].map(([value, label]) => (
+                <div key={label} className="rounded-2xl bg-[rgb(var(--bg-elevated))] p-4">
+                  <p className="text-2xl font-bold">{value}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">{label}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          {isOwnProfile ? (
+            <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label="Name"
@@ -93,7 +136,22 @@ export function ProfilePage() {
                 {saving ? 'Saving...' : 'Save profile'}
               </Button>
             </div>
-          </form>
+            </form>
+          ) : (
+            <div className="rounded-[28px] border bg-[rgb(var(--bg-elevated))] p-6">
+              <p className="text-lg font-bold">Profile snapshot</p>
+              <p className="mt-3 text-sm leading-7 text-[rgb(var(--muted))]">
+                This view is read-only. Search helps you quickly discover who is learning what across the platform.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {(profileUser?.skills || []).map((skill) => (
+                  <span key={skill} className="rounded-full bg-[rgb(var(--accent-soft))] px-3 py-2 text-sm font-semibold">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -124,4 +182,3 @@ export function ProfilePage() {
     </div>
   );
 }
-

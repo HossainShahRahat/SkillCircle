@@ -6,6 +6,8 @@ import { RightPanel } from '../components/RightPanel.jsx';
 import { CreatePostModal } from '../components/CreatePostModal.jsx';
 import { CreateCircleModal } from '../components/CreateCircleModal.jsx';
 import { JoinByCodeModal } from '../components/JoinByCodeModal.jsx';
+import { NotificationBell } from '../components/NotificationBell.jsx';
+import { SearchBar } from '../components/SearchBar.jsx';
 import { ToastViewport } from '../components/ToastViewport.jsx';
 import { Button } from '../components/Button.jsx';
 import { useAuthStore } from '../store/authStore.js';
@@ -79,6 +81,13 @@ export function AppLayout() {
             ))}
           </div>
         ) : null}
+
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <SearchBar />
+          <div className="flex items-center justify-end">
+            <NotificationBell />
+          </div>
+        </div>
 
         <div className="flex min-w-0 gap-6">
           <main className="min-w-0 flex-1">

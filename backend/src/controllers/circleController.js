@@ -38,6 +38,14 @@ export async function createCircle(req, res, next) {
 export async function joinCircle(req, res, next) {
   try {
     const result = await repository.joinCircle(req.params.circleId, req.user.id);
+    if (result.notificationTargetUserId) {
+      await repository.createNotification({
+        userId: result.notificationTargetUserId,
+        type: 'join',
+        referenceId: req.params.circleId,
+        triggeredBy: req.user.id,
+      });
+    }
     res.json(result);
   } catch (error) {
     next(error);
@@ -52,6 +60,14 @@ export async function joinCircleByCode(req, res, next) {
     }
 
     const result = await repository.joinCircleByCode(code, req.user.id);
+    if (result.notificationTargetUserId) {
+      await repository.createNotification({
+        userId: result.notificationTargetUserId,
+        type: 'join',
+        referenceId: result.circle.id,
+        triggeredBy: req.user.id,
+      });
+    }
     res.json(result);
   } catch (error) {
     next(error);
