@@ -2,9 +2,11 @@ create extension if not exists "pgcrypto";
 
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),
+  username text unique,
   name text not null,
   email text unique not null,
   password_hash text not null,
+  role text not null default 'member',
   bio text default '',
   avatar_url text default '',
   skills text[] default '{}',
@@ -104,6 +106,17 @@ create table if not exists messages (
   created_at timestamptz not null default now()
 );
 
+create table if not exists circle_messages (
+  id uuid primary key default gen_random_uuid(),
+  circle_id uuid not null references circles(id) on delete cascade,
+  sender_id uuid not null references users(id) on delete cascade,
+  content text not null default '',
+  media_url text default '',
+  reactions jsonb not null default '[]'::jsonb,
+  status_array jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists direct_chats (
   id uuid primary key default gen_random_uuid(),
   user1_id uuid not null references users(id) on delete cascade,
@@ -127,6 +140,14 @@ create table if not exists direct_messages (
   reactions jsonb not null default '[]'::jsonb,
   message_status jsonb not null default '[]'::jsonb,
   client_id text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists message_reactions (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid not null,
+  user_id uuid not null references users(id) on delete cascade,
+  reaction_type text not null,
   created_at timestamptz not null default now()
 );
 
@@ -156,6 +177,8 @@ create index if not exists idx_messages_circle_id on messages (circle_id, create
 create index if not exists idx_reactions_reference on reactions (reference_type, reference_id);
 create index if not exists idx_direct_chats_users on direct_chats (user1_id, user2_id);
 create index if not exists idx_direct_messages_chat_id on direct_messages (chat_id, created_at asc);
+create index if not exists idx_circle_messages_circle_id on circle_messages (circle_id, created_at asc);
+create index if not exists idx_message_reactions_message_id on message_reactions (message_id, created_at desc);
 
 alter table notifications add column if not exists is_read boolean not null default false;
 alter table comments add column if not exists mentioned_users uuid[] not null default '{}';
@@ -168,6 +191,8 @@ alter table users add column if not exists total_posts integer not null default 
 alter table users add column if not exists total_reactions integer not null default 0;
 alter table circles add column if not exists is_premium boolean not null default false;
 alter table circles add column if not exists premium_badge text default 'core';
+alter table users add column if not exists username text unique;
+alter table users add column if not exists role text not null default 'member';
 alter table messages add column if not exists media_url text default '';
 alter table messages add column if not exists media_type text default '';
 alter table messages add column if not exists media_name text default '';

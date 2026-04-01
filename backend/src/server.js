@@ -14,10 +14,15 @@ import { reactionRoutes } from './routes/reactionRoutes.js';
 import { dashboardRoutes } from './routes/dashboardRoutes.js';
 import { analyticsRoutes } from './routes/analyticsRoutes.js';
 import { settingsRoutes } from './routes/settingsRoutes.js';
+import { directRoutes } from './routes/directRoutes.js';
+import { circleMessageRoutes } from './routes/circleMessageRoutes.js';
+import { mediaRoutes } from './routes/mediaRoutes.js';
+import { messageActionRoutes } from './routes/messageActionRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { attachCurrentUser } from './middleware/authMiddleware.js';
 import { applySecurityHeaders } from './middleware/securityMiddleware.js';
 import { initializeSocketServer } from './services/socketServer.js';
+import { logger } from './services/logger.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -52,6 +57,10 @@ app.use('/api/circles', circleRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/direct', directRoutes);
+app.use('/api/circle', circleMessageRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api/messages', messageActionRoutes);
 app.use('/api/reactions', reactionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -62,5 +71,5 @@ app.use(errorHandler);
 initializeSocketServer(httpServer);
 
 httpServer.listen(config.port, () => {
-  console.log(`SkillCircle API listening on http://localhost:${config.port}`);
+  logger.info('SkillCircle API listening', { url: `http://localhost:${config.port}` });
 });

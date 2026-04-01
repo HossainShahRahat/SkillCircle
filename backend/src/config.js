@@ -22,6 +22,10 @@ export const config = {
   appBaseUrl: process.env.APP_BASE_URL || 'http://localhost:4000',
   forceHttps: process.env.FORCE_HTTPS === 'true',
   nodeEnv: process.env.NODE_ENV || 'development',
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  cloudinaryUploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET || '',
 };
 
 export const isSupabaseConfigured = Boolean(

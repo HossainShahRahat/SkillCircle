@@ -57,6 +57,11 @@ export async function createCircleMessage(req, res, next) {
         targetId: message.circle_id,
         message,
       });
+      emitToCircle(message.circle_id, 'media_uploaded', {
+        scope: 'circle',
+        targetId: message.circle_id,
+        message,
+      });
     }
 
     res.status(201).json({ message });
@@ -188,6 +193,11 @@ export async function createDirectMessage(req, res, next) {
         targetId: req.params.chatId,
         message,
       });
+      emitToDirectChat(req.params.chatId, 'media_uploaded', {
+        scope: 'direct',
+        targetId: req.params.chatId,
+        message,
+      });
     }
 
     const recipientStatus = message.message_status?.[0];
@@ -199,6 +209,11 @@ export async function createDirectMessage(req, res, next) {
       });
       if (message.media_url) {
         emitToUser(recipientStatus.user_id, 'media_upload_notification', {
+          scope: 'direct',
+          targetId: req.params.chatId,
+          message,
+        });
+        emitToUser(recipientStatus.user_id, 'media_uploaded', {
           scope: 'direct',
           targetId: req.params.chatId,
           message,
@@ -295,6 +310,78 @@ export async function uploadChatMedia(req, res, next) {
     });
 
     res.status(201).json({ media });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function reactToMessage(req, res, next) {
+  if (req.body.scope === 'direct') {
+    return reactToDirectMessage(req, res, next);
+  }
+  return reactToCircleMessage(req, res, next);
+}
+
+export async function updateMessageStatusById(req, res, next) {
+  try {
+    const { scope, targetId, status } = req.body;
+    const messages = scope === 'direct'
+      ? await chatRepository.updateDirectMessageStatus(targetId, req.user.id, status)
+      : await chatRepository.updateCircleMessageStatus(targetId, req.user.id, status);
+
+    const matchedMessage = messages.find((message) => message.id === req.params.messageId) || null;
+    const emitter = scope === 'direct' ? emitToDirectChat : emitToCircle;
+    messages.forEach((message) => {
+      emitter(targetId, 'message_status_update', {
+        scope,
+        targetId,
+        message,
+      });
+      if (scope === 'direct') {
+        emitToUser(message.sender_id, 'message_status_update', {
+          scope,
+          targetId,
+          message,
+        });
+      }
+    });
+
+    res.json({ message: matchedMessage, messages });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function syncOfflineMessages(req, res, next) {
+  try {
+    const queue = Array.isArray(req.body.messages) ? req.body.messages : [];
+    const delivered = [];
+
+    for (const item of queue) {
+      if (item.scope === 'direct') {
+        const message = await chatRepository.createDirectMessage({
+          chatId: item.targetId,
+          senderId: req.user.id,
+          content: item.content?.trim() || '',
+          media: item.media || null,
+          clientId: item.client_id || null,
+        });
+        emitToDirectChat(item.targetId, 'new_message', { scope: 'direct', targetId: item.targetId, message });
+        delivered.push(message);
+      } else if (item.scope === 'circle') {
+        const message = await chatRepository.createCircleMessage({
+          circleId: item.targetId,
+          userId: req.user.id,
+          content: item.content?.trim() || '',
+          media: item.media || null,
+          clientId: item.client_id || null,
+        });
+        emitToCircle(item.targetId, 'new_message', { scope: 'circle', targetId: item.targetId, message });
+        delivered.push(message);
+      }
+    }
+
+    res.json({ messages: delivered });
   } catch (error) {
     next(error);
   }

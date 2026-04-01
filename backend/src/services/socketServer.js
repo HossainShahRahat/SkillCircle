@@ -1,22 +1,9 @@
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { repository } from '../models/repository.js';
+import { authenticateSocket } from './socketAuth.js';
+import { registerChatNamespaces, registerRootSocketHandlers } from './socketHandlers.js';
 
 let ioInstance = null;
-const typingRateLimits = new Map();
-
-function canEmitTyping(socketId, scope, targetId, isTyping) {
-  const key = `${socketId}:${scope}:${targetId}:${isTyping ? 'start' : 'stop'}`;
-  const now = Date.now();
-  const previous = typingRateLimits.get(key) || 0;
-  const minInterval = isTyping ? 800 : 250;
-  if (now - previous < minInterval) {
-    return false;
-  }
-  typingRateLimits.set(key, now);
-  return true;
-}
 
 function buildCorsOrigin(origin, callback) {
   if (!origin || config.clientUrls.includes(origin)) {
@@ -34,67 +21,12 @@ export function initializeSocketServer(httpServer) {
     },
   });
 
-  ioInstance.use(async (socket, next) => {
-    try {
-      const token = socket.handshake.auth?.token;
-      if (!token) {
-        return next(new Error('Authentication required.'));
-      }
+  ioInstance.use(authenticateSocket);
+  ioInstance.of('/direct').use(authenticateSocket);
+  ioInstance.of('/circle').use(authenticateSocket);
 
-      const payload = jwt.verify(token, config.jwtSecret);
-      const user = await repository.findUserById(payload.userId);
-      if (!user) {
-        return next(new Error('Invalid user.'));
-      }
-
-      socket.user = user;
-      return next();
-    } catch (_error) {
-      return next(new Error('Authentication required.'));
-    }
-  });
-
-  ioInstance.on('connection', (socket) => {
-    socket.join(`user:${socket.user.id}`);
-
-    socket.on('join_circle_room', (circleId) => {
-      if (circleId) {
-        socket.join(`circle:${circleId}`);
-      }
-    });
-
-    socket.on('leave_circle_room', (circleId) => {
-      if (circleId) {
-        socket.leave(`circle:${circleId}`);
-      }
-    });
-
-    socket.on('join_direct_room', (chatId) => {
-      if (chatId) {
-        socket.join(`direct:${chatId}`);
-      }
-    });
-
-    socket.on('leave_direct_room', (chatId) => {
-      if (chatId) {
-        socket.leave(`direct:${chatId}`);
-      }
-    });
-
-    socket.on('typing', ({ scope, targetId, isTyping }) => {
-      if (!scope || !targetId) return;
-      if (!canEmitTyping(socket.id, scope, targetId, Boolean(isTyping))) return;
-      const room = scope === 'direct' ? `direct:${targetId}` : `circle:${targetId}`;
-      const payload = {
-        scope,
-        targetId,
-        isTyping: Boolean(isTyping),
-        user: socket.user,
-      };
-      socket.to(room).emit('typing', payload);
-      socket.to(room).emit(Boolean(isTyping) ? 'typing_start' : 'typing_stop', payload);
-    });
-  });
+  registerRootSocketHandlers(ioInstance);
+  registerChatNamespaces(ioInstance);
 
   return ioInstance;
 }
@@ -106,16 +38,20 @@ export function getSocketServer() {
 export function emitToUser(userId, event, payload) {
   if (!ioInstance || !userId) return;
   ioInstance.to(`user:${userId}`).emit(event, payload);
+  ioInstance.of('/direct').to(`user:${userId}`).emit(event, payload);
+  ioInstance.of('/circle').to(`user:${userId}`).emit(event, payload);
 }
 
 export function emitToCircle(circleId, event, payload) {
   if (!ioInstance || !circleId) return;
   ioInstance.to(`circle:${circleId}`).emit(event, payload);
+  ioInstance.of('/circle').to(`circle:${circleId}`).emit(event, payload);
 }
 
 export function emitToDirectChat(chatId, event, payload) {
   if (!ioInstance || !chatId) return;
   ioInstance.to(`direct:${chatId}`).emit(event, payload);
+  ioInstance.of('/direct').to(`direct:${chatId}`).emit(event, payload);
 }
 
 export function emitGlobal(event, payload) {
