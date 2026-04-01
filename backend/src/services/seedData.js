@@ -1,0 +1,79 @@
+export const demoUsers = [
+  {
+    id: 'u_demo_1',
+    name: 'Maya Chen',
+    email: 'maya@skillcircle.dev',
+    password_hash: '$2a$10$O2DF9NDeUr7R.LYcOUfiX.MUtgTok2VqP3D4xzhKP2noKYxB4E1aG',
+    bio: 'Frontend engineer documenting a careful climb into motion design.',
+    avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
+    skills: ['React', 'Motion', 'Design Systems'],
+    created_at: '2026-03-20T09:00:00.000Z',
+  },
+  {
+    id: 'u_demo_2',
+    name: 'Aarav Patel',
+    email: 'aarav@skillcircle.dev',
+    password_hash: '$2a$10$O2DF9NDeUr7R.LYcOUfiX.MUtgTok2VqP3D4xzhKP2noKYxB4E1aG',
+    bio: 'Backend builder learning distributed systems one sketch at a time.',
+    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    skills: ['Node.js', 'Postgres', 'Architecture'],
+    created_at: '2026-03-18T11:00:00.000Z',
+  },
+];
+
+export const demoCircles = [
+  {
+    id: 'c_demo_1',
+    name: 'React Sprint',
+    description: 'Daily build logs, concept breakdowns, and feedback loops for shipping React faster.',
+    created_by: 'u_demo_1',
+    created_at: '2026-03-21T10:00:00.000Z',
+  },
+  {
+    id: 'c_demo_2',
+    name: 'System Design Notes',
+    description: 'A practical circle for whiteboarding backend architecture and reflecting on tradeoffs.',
+    created_by: 'u_demo_2',
+    created_at: '2026-03-22T15:00:00.000Z',
+  },
+];
+
+export const demoCircleMembers = [
+  { id: 'cm_demo_1', user_id: 'u_demo_1', circle_id: 'c_demo_1', created_at: '2026-03-21T10:05:00.000Z' },
+  { id: 'cm_demo_2', user_id: 'u_demo_2', circle_id: 'c_demo_2', created_at: '2026-03-22T15:05:00.000Z' },
+  { id: 'cm_demo_3', user_id: 'u_demo_2', circle_id: 'c_demo_1', created_at: '2026-03-23T09:30:00.000Z' },
+];
+
+export const demoPosts = [
+  {
+    id: 'p_demo_1',
+    user_id: 'u_demo_1',
+    circle_id: 'c_demo_1',
+    content: 'Day 5 of rebuilding my component library. Today I replaced one-off spacing hacks with a token scale and the UI finally feels breathable.',
+    image_url: '',
+    created_at: '2026-03-31T12:30:00.000Z',
+  },
+  {
+    id: 'p_demo_2',
+    user_id: 'u_demo_2',
+    circle_id: 'c_demo_2',
+    content: 'Mapped a caching strategy for a feed service tonight. The biggest unlock was treating freshness as a product choice, not just an engineering one.',
+    image_url: '',
+    created_at: '2026-03-31T18:00:00.000Z',
+  },
+];
+
+export const demoComments = [
+  {
+    id: 'co_demo_1',
+    user_id: 'u_demo_2',
+    post_id: 'p_demo_1',
+    content: 'The token-scale insight is real. That usually makes everything else snap into place.',
+    created_at: '2026-03-31T13:00:00.000Z',
+  },
+];
+
+export const demoLikes = [
+  { id: 'l_demo_1', user_id: 'u_demo_2', post_id: 'p_demo_1', created_at: '2026-03-31T13:05:00.000Z' },
+  { id: 'l_demo_2', user_id: 'u_demo_1', post_id: 'p_demo_2', created_at: '2026-03-31T19:00:00.000Z' },
+];

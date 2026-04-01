@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --bg: 247 245 241;
+    --bg-elevated: 255 255 255;
+    --bg-soft: 239 243 250;
+    --text: 23 23 23;
+    --muted: 100 116 139;
+    --border: 219 226 239;
+    --accent: 31 111 235;
+    --accent-soft: 223 235 255;
+    --success: 22 163 74;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --bg: 11 15 23;
+    --bg-elevated: 17 24 39;
+    --bg-soft: 21 32 52;
+    --text: 243 244 246;
+    --muted: 148 163 184;
+    --border: 42 57 88;
+    --accent: 90 149 255;
+    --accent-soft: 20 39 71;
+    --success: 74 222 128;
+  }
+
+  * {
+    @apply border-[rgb(var(--border))];
+  }
+
+  body {
+    @apply min-h-screen bg-[rgb(var(--bg))] font-sans text-[rgb(var(--text))] antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(255, 138, 76, 0.12), transparent 26%),
+      radial-gradient(circle at top right, rgba(31, 111, 235, 0.10), transparent 24%);
+  }
+
+  button,
+  input,
+  textarea {
+    @apply outline-none;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/40 bg-[rgb(var(--bg-elevated))]/90 shadow-panel backdrop-blur;
+  }
+
+  .surface-card {
+    @apply rounded-[28px] border bg-[rgb(var(--bg-elevated))] shadow-soft;
+  }
+
+  .muted-copy {
+    @apply text-sm text-[rgb(var(--muted))];
+  }
+}
+
