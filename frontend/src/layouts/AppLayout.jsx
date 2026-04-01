@@ -67,6 +67,11 @@ export function AppLayout() {
     const handleNewMessage = (payload) => ingestRealtimeMessage(payload);
     const handleMessageStatus = (payload) => ingestRealtimeMessageStatus(payload);
     const handleMessageReaction = ({ message }) => ingestRealtimeMessageReaction(message);
+    const handleMediaUpload = ({ message }) => {
+      if (message) {
+        ingestRealtimeMessage({ scope: message.chat_id ? 'direct' : 'circle', targetId: message.chat_id || message.circle_id, message });
+      }
+    };
     const handleTyping = (payload) => ingestTyping(payload);
     const handleReactionUpdated = ({ referenceType, referenceId, reactions }) => applyReactionSummary(referenceType, referenceId, reactions);
     const handlePostUpdated = ({ post }) => ingestRealtimePostUpdate(post);
@@ -86,6 +91,7 @@ export function AppLayout() {
     socket.on('new_message', handleNewMessage);
     socket.on('message_status_update', handleMessageStatus);
     socket.on('message_reaction', handleMessageReaction);
+    socket.on('media_upload_notification', handleMediaUpload);
     socket.on('typing', handleTyping);
     socket.on('reaction_updated', handleReactionUpdated);
     socket.on('post_updated', handlePostUpdated);
@@ -102,6 +108,7 @@ export function AppLayout() {
       socket.off('new_message', handleNewMessage);
       socket.off('message_status_update', handleMessageStatus);
       socket.off('message_reaction', handleMessageReaction);
+      socket.off('media_upload_notification', handleMediaUpload);
       socket.off('typing', handleTyping);
       socket.off('reaction_updated', handleReactionUpdated);
       socket.off('post_updated', handlePostUpdated);

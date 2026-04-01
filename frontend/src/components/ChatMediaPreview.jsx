@@ -6,25 +6,29 @@ function isVideo(type = '') {
   return type.startsWith('video/');
 }
 
-export function ChatMediaPreview({ message }) {
+export function ChatMediaPreview({ message, onOpenMedia }) {
   if (!message.media_url) return null;
 
   if (isImage(message.media_type)) {
     return (
-      <img
-        src={message.media_url}
-        alt={message.media_name || 'Attachment'}
-        loading="lazy"
-        className="mt-2 max-h-72 w-full rounded-2xl object-cover"
-      />
+      <button type="button" className="mt-2 block w-full" onClick={() => onOpenMedia?.({ url: message.media_url, type: message.media_type, name: message.media_name })}>
+        <img
+          src={message.media_url}
+          alt={message.media_name || 'Attachment'}
+          loading="lazy"
+          className="max-h-72 w-full rounded-2xl object-cover"
+        />
+      </button>
     );
   }
 
   if (isVideo(message.media_type)) {
     return (
-      <video controls preload="metadata" className="mt-2 max-h-72 w-full rounded-2xl">
-        <source src={message.media_url} type={message.media_type} />
-      </video>
+      <button type="button" className="mt-2 block w-full" onClick={() => onOpenMedia?.({ url: message.media_url, type: message.media_type, name: message.media_name })}>
+        <video preload="metadata" className="max-h-72 w-full rounded-2xl">
+          <source src={message.media_url} type={message.media_type} />
+        </video>
+      </button>
     );
   }
 

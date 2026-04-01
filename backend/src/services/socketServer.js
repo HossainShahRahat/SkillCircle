@@ -4,6 +4,19 @@ import { config } from '../config.js';
 import { repository } from '../models/repository.js';
 
 let ioInstance = null;
+const typingRateLimits = new Map();
+
+function canEmitTyping(socketId, scope, targetId, isTyping) {
+  const key = `${socketId}:${scope}:${targetId}:${isTyping ? 'start' : 'stop'}`;
+  const now = Date.now();
+  const previous = typingRateLimits.get(key) || 0;
+  const minInterval = isTyping ? 800 : 250;
+  if (now - previous < minInterval) {
+    return false;
+  }
+  typingRateLimits.set(key, now);
+  return true;
+}
 
 function buildCorsOrigin(origin, callback) {
   if (!origin || config.clientUrls.includes(origin)) {
@@ -70,13 +83,16 @@ export function initializeSocketServer(httpServer) {
 
     socket.on('typing', ({ scope, targetId, isTyping }) => {
       if (!scope || !targetId) return;
+      if (!canEmitTyping(socket.id, scope, targetId, Boolean(isTyping))) return;
       const room = scope === 'direct' ? `direct:${targetId}` : `circle:${targetId}`;
-      socket.to(room).emit('typing', {
+      const payload = {
         scope,
         targetId,
         isTyping: Boolean(isTyping),
         user: socket.user,
-      });
+      };
+      socket.to(room).emit('typing', payload);
+      socket.to(room).emit(Boolean(isTyping) ? 'typing_start' : 'typing_stop', payload);
     });
   });
 

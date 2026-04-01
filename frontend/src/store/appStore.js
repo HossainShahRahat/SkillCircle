@@ -3,6 +3,9 @@ import { api } from '../services/api.js';
 import { getSocket } from '../services/socket.js';
 import { clearQueuedMessages, enqueueMessage, getQueuedMessages, removeQueuedMessage } from '../services/chatQueue.js';
 
+const typingThrottleState = new Map();
+const typingStopTimers = new Map();
+
 function buildOptimisticMessage(scope, targetId, user, payload) {
   const createdAt = new Date().toISOString();
   return {
@@ -788,7 +791,35 @@ export const useAppStore = create((set, get) => ({
   setTyping(scope, targetId, isTyping) {
     const token = localStorage.getItem('skillcircle-token');
     const socket = getSocket(token);
-    socket?.emit('typing', { scope, targetId, isTyping });
+    if (!socket || !scope || !targetId) return;
+
+    const key = `${scope}:${targetId}`;
+    const now = Date.now();
+    const lastSent = typingThrottleState.get(key) || 0;
+
+    if (!isTyping) {
+      if (typingStopTimers.has(key)) {
+        clearTimeout(typingStopTimers.get(key));
+        typingStopTimers.delete(key);
+      }
+      socket.emit('typing', { scope, targetId, isTyping: false });
+      typingThrottleState.delete(key);
+      return;
+    }
+
+    if (now - lastSent >= 900) {
+      socket.emit('typing', { scope, targetId, isTyping: true });
+      typingThrottleState.set(key, now);
+    }
+
+    if (typingStopTimers.has(key)) {
+      clearTimeout(typingStopTimers.get(key));
+    }
+    typingStopTimers.set(key, setTimeout(() => {
+      socket.emit('typing', { scope, targetId, isTyping: false });
+      typingStopTimers.delete(key);
+      typingThrottleState.delete(key);
+    }, 1400));
   },
   clearMessages() {
     set({ messages: [], messagesLoading: false });

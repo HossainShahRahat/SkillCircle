@@ -51,6 +51,13 @@ export async function createCircleMessage(req, res, next) {
       targetId: message.circle_id,
       message,
     });
+    if (message.media_url) {
+      emitToCircle(message.circle_id, 'media_upload_notification', {
+        scope: 'circle',
+        targetId: message.circle_id,
+        message,
+      });
+    }
 
     res.status(201).json({ message });
   } catch (error) {
@@ -175,6 +182,13 @@ export async function createDirectMessage(req, res, next) {
       targetId: req.params.chatId,
       message,
     });
+    if (message.media_url) {
+      emitToDirectChat(req.params.chatId, 'media_upload_notification', {
+        scope: 'direct',
+        targetId: req.params.chatId,
+        message,
+      });
+    }
 
     const recipientStatus = message.message_status?.[0];
     if (recipientStatus?.user_id) {
@@ -183,6 +197,13 @@ export async function createDirectMessage(req, res, next) {
         targetId: req.params.chatId,
         message,
       });
+      if (message.media_url) {
+        emitToUser(recipientStatus.user_id, 'media_upload_notification', {
+          scope: 'direct',
+          targetId: req.params.chatId,
+          message,
+        });
+      }
     }
 
     res.status(201).json({ message });

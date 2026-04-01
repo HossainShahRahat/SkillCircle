@@ -6,6 +6,17 @@ import { Card } from '../components/Card.jsx';
 import { Input } from '../components/Input.jsx';
 import { useAuthStore } from '../store/authStore.js';
 
+const demoAccounts = [
+  {
+    email: import.meta.env.VITE_DEMO_USER_1_EMAIL || 'maya@skillcircle.dev',
+    password: import.meta.env.VITE_DEMO_USER_1_PASSWORD || 'password123',
+  },
+  {
+    email: import.meta.env.VITE_DEMO_USER_2_EMAIL || 'aarav@skillcircle.dev',
+    password: import.meta.env.VITE_DEMO_USER_2_PASSWORD || 'password123',
+  },
+];
+
 export function AuthPage() {
   const navigate = useNavigate();
   const authenticate = useAuthStore((state) => state.authenticate);
@@ -116,8 +127,11 @@ export function AuthPage() {
 
             <div className="mt-6 rounded-[24px] bg-[rgb(var(--bg-soft))] p-4">
               <p className="text-sm font-semibold">Demo credentials</p>
-              <p className="mt-2 text-sm text-[rgb(var(--muted))]">Email: `maya@skillcircle.dev` or `aarav@skillcircle.dev`</p>
-              <p className="text-sm text-[rgb(var(--muted))]">Password: `password123`</p>
+              {demoAccounts.map((account, index) => (
+                <p key={account.email} className={`${index === 0 ? 'mt-2' : 'mt-1'} text-sm text-[rgb(var(--muted))]`}>
+                  {account.email} / {account.password}
+                </p>
+              ))}
             </div>
           </div>
         </Card>
@@ -125,4 +139,3 @@ export function AuthPage() {
     </div>
   );
 }
-

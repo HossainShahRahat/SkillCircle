@@ -1,5 +1,5 @@
 import { Paperclip, Search, SendHorizontal, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from './Button.jsx';
 import { Input } from './Input.jsx';
 
@@ -22,8 +22,15 @@ export function ChatComposer({
   onSearchChange,
 }) {
   const fileInputRef = useRef(null);
+  const stopTypingTimeoutRef = useRef(null);
   const [attachment, setAttachment] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => () => {
+    if (stopTypingTimeoutRef.current) {
+      clearTimeout(stopTypingTimeoutRef.current);
+    }
+  }, []);
 
   async function handleFileChange(event) {
     const [file] = Array.from(event.target.files || []);
@@ -87,8 +94,15 @@ export function ChatComposer({
           <Input
             value={draft}
             onChange={(event) => {
-              onDraftChange(event.target.value);
-              onTyping(event.target.value);
+              const value = event.target.value;
+              onDraftChange(value);
+              onTyping(value);
+              if (stopTypingTimeoutRef.current) {
+                clearTimeout(stopTypingTimeoutRef.current);
+              }
+              stopTypingTimeoutRef.current = setTimeout(() => {
+                onTyping('');
+              }, 1200);
             }}
             className="py-3"
             placeholder="Write a message"

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/Card.jsx';
 import { DirectChatList } from '../components/DirectChatList.jsx';
-import { ChatThread } from '../components/ChatThread.jsx';
+import { ChatWindow } from '../components/ChatWindow.jsx';
 import { useAuthStore } from '../store/authStore.js';
 import { useAppStore } from '../store/appStore.js';
 import { getSocket } from '../services/socket.js';
@@ -90,7 +90,7 @@ export function DirectMessagesPage() {
       </div>
 
       {activeChat ? (
-        <ChatThread
+        <ChatWindow
           title={activeChat.participant?.name || 'Conversation'}
           subtitle={activeChat.participant?.bio || 'Direct messages with live delivery, reactions, and offline sync.'}
           messages={directMessages}
