@@ -10,6 +10,7 @@ export function ChatWindow({
   messages,
   currentUser,
   typingUsers,
+  isOnline = true,
   draft,
   onDraftChange,
   onSend,
@@ -63,8 +64,8 @@ export function ChatWindow({
             <h2 className="text-lg font-bold">{title}</h2>
             <p className="muted-copy">{subtitle}</p>
           </div>
-          <div className="rounded-full bg-[rgb(var(--bg-soft))] px-3 py-2 text-xs font-semibold text-[rgb(var(--muted))]">
-            {typingUsers?.length ? 'Live now' : 'Active chat'}
+          <div className={`rounded-full px-3 py-2 text-xs font-semibold ${isOnline ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-[rgb(var(--bg-soft))] text-[rgb(var(--muted))]'}`}>
+            {typingUsers?.length ? 'Typing now' : isOnline ? 'Online' : 'Offline'}
           </div>
         </div>
       </div>

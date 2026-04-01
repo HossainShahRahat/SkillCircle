@@ -6,7 +6,7 @@ export function Modal({ open, title, children, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm">
-      <div className="surface-card w-full max-w-2xl p-6">
+      <div className="surface-card max-h-[92vh] w-full max-w-2xl overflow-y-auto p-5 sm:p-6">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold">{title}</h3>
@@ -21,4 +21,3 @@ export function Modal({ open, title, children, onClose }) {
     </div>
   );
 }
-

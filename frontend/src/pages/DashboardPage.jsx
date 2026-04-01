@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BellRing, Flame, RefreshCw, Sparkles, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
+import { FeedSkeleton } from '../components/FeedSkeleton.jsx';
 import { InlinePostComposer } from '../components/InlinePostComposer.jsx';
-import { OnboardingChecklist } from '../components/OnboardingChecklist.jsx';
 import { PostCard } from '../components/PostCard.jsx';
 import { useAppStore } from '../store/appStore.js';
 import { useAuthStore } from '../store/authStore.js';
@@ -29,10 +29,16 @@ export function DashboardPage() {
   const createPost = useAppStore((state) => state.createPost);
   const submitting = useAppStore((state) => state.submitting);
   const [feedMode, setFeedMode] = useState('my_circles');
+  const [visibleCount, setVisibleCount] = useState(6);
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [feedMode, posts.length]);
 
   const joinedCircleIds = useMemo(
     () => new Set(circles.filter((circle) => circle.joined).map((circle) => circle.id)),
@@ -43,6 +49,20 @@ export function DashboardPage() {
     if (feedMode === 'global') return posts;
     return posts.filter((post) => !post.circle_id || joinedCircleIds.has(post.circle_id));
   }, [feedMode, joinedCircleIds, posts]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || visiblePosts.length <= visibleCount) return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisibleCount((current) => Math.min(current + 4, visiblePosts.length));
+      }
+    }, { rootMargin: '200px' });
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [visibleCount, visiblePosts.length]);
 
   return (
     <div className="space-y-5">
@@ -112,15 +132,6 @@ export function DashboardPage() {
         </div>
       </Card>
 
-      <OnboardingChecklist
-        user={user}
-        joinedCirclesCount={circles.filter((circle) => circle.joined).length}
-        postsCount={posts.filter((post) => post.author?.id === user?.id).length}
-        onOpenProfile={() => navigate('/profile')}
-        onOpenCreateCircle={() => navigate('/circles')}
-        onOpenPostComposer={() => setModalOpen(true)}
-      />
-
       <InlinePostComposer
         user={user}
         circles={circles.filter((circle) => circle.joined)}
@@ -153,23 +164,28 @@ export function DashboardPage() {
             </div>
           </div>
           {loadingDashboard ? (
-            <Card className="p-8 text-center">
-              <p className="font-semibold">Loading your dashboard...</p>
-            </Card>
+            <FeedSkeleton count={3} />
           ) : visiblePosts.length ? (
-            visiblePosts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                user={user}
-                onComment={(postId, content) => commentOnPost(postId, content, user)}
-                onReact={toggleReaction}
-                onUpdatePost={updatePost}
-                onDeletePost={deletePost}
-                onUpdateComment={updateComment}
-                onDeleteComment={deleteComment}
-              />
-            ))
+            <>
+              {visiblePosts.slice(0, visibleCount).map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  user={user}
+                  onComment={(postId, content) => commentOnPost(postId, content, user)}
+                  onReact={toggleReaction}
+                  onUpdatePost={updatePost}
+                  onDeletePost={deletePost}
+                  onUpdateComment={updateComment}
+                  onDeleteComment={deleteComment}
+                />
+              ))}
+              {visiblePosts.length > visibleCount ? (
+                <div ref={loadMoreRef} className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-4 text-center text-sm text-[rgb(var(--muted))]">
+                  Loading more updates...
+                </div>
+              ) : null}
+            </>
           ) : (
             <EmptyState
               icon={Sparkles}

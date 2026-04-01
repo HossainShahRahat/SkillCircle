@@ -11,6 +11,7 @@ export function Avatar({ user, size = 'md' }) {
         className={`${sizes[size]} rounded-2xl object-cover`}
         src={user.avatar_url}
         alt={user.name}
+        loading="lazy"
       />
     );
   }
@@ -21,4 +22,3 @@ export function Avatar({ user, size = 'md' }) {
     </div>
   );
 }
-

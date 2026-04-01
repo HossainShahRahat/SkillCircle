@@ -5,6 +5,7 @@ import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { useAppStore } from '../store/appStore.js';
+import { formatRelativeTime } from '../utils/time.js';
 
 function notificationMessage(notification) {
   const actor = notification.actor?.name || 'Someone';
@@ -27,6 +28,32 @@ export function NotificationsPage() {
   }, [loadNotifications]);
 
   const unread = useMemo(() => notifications.filter((notification) => !notification.is_read), [notifications]);
+  const groupedNotifications = useMemo(() => {
+    const groups = [];
+
+    notifications.forEach((notification) => {
+      const key = `${notification.type}:${notification.post_id || ''}:${notification.circle_id || ''}`;
+      const existing = groups.find((group) => group.key === key && Math.abs(new Date(group.latest.created_at) - new Date(notification.created_at)) < 1000 * 60 * 60 * 12);
+
+      if (!existing) {
+        groups.push({
+          key,
+          latest: notification,
+          notifications: [notification],
+          unread: !notification.is_read,
+        });
+        return;
+      }
+
+      existing.notifications.push(notification);
+      existing.unread = existing.unread || !notification.is_read;
+      if (new Date(notification.created_at) > new Date(existing.latest.created_at)) {
+        existing.latest = notification;
+      }
+    });
+
+    return groups;
+  }, [notifications]);
 
   async function markAllAsRead() {
     await Promise.all(unread.map((notification) => markNotificationRead(notification.id).catch(() => null)));
@@ -54,20 +81,25 @@ export function NotificationsPage() {
         <Card className="p-8 text-center">
           <p className="font-semibold">Loading notifications...</p>
         </Card>
-      ) : notifications.length ? (
+      ) : groupedNotifications.length ? (
         <div className="space-y-4">
-          {notifications.map((notification) => (
+          {groupedNotifications.map((group) => {
+            const notification = group.latest;
+            const actorNames = Array.from(new Set(group.notifications.map((item) => item.actor?.name).filter(Boolean)));
+            const groupLabel = actorNames.length > 1
+              ? `${actorNames[0]} and ${actorNames.length - 1} others`
+              : notificationMessage(notification);
+
+            return (
             <Card
-              key={notification.id}
-              className={`cursor-pointer p-5 transition hover:border-[rgba(var(--accent),0.25)] ${notification.is_read ? '' : 'bg-[rgb(var(--accent-soft))]/30'}`}
+              key={group.key}
+              className={`cursor-pointer p-5 transition hover:border-[rgba(var(--accent),0.25)] ${group.unread ? 'bg-[rgb(var(--accent-soft))]/30' : ''}`}
             >
               <button
                 type="button"
                 className="w-full text-left"
                 onClick={async () => {
-                  if (!notification.is_read) {
-                    await markNotificationRead(notification.id);
-                  }
+                  await Promise.all(group.notifications.filter((item) => !item.is_read).map((item) => markNotificationRead(item.id).catch(() => null)));
                   if (notification.circle_id) {
                     navigate(`/circles/${notification.circle_id}`);
                     return;
@@ -81,20 +113,21 @@ export function NotificationsPage() {
                       <BellRing size={18} />
                     </div>
                     <div>
-                      <p className="font-semibold">{notificationMessage(notification)}</p>
+                      <p className="font-semibold">{actorNames.length > 1 ? `${groupLabel} ${notification.type === 'like' ? 'reacted to your post' : notification.type === 'comment' ? 'commented on your post' : notification.type === 'mention' ? 'mentioned you' : notification.type === 'message' ? 'sent messages' : 'joined your circle'}` : notificationMessage(notification)}</p>
                       <p className="mt-2 text-sm leading-6 text-[rgb(var(--muted))]">
-                        {notification.post_id ? 'Tap to jump back into the conversation.' : 'Tap to open the most relevant place in the app.'}
+                        {group.notifications.length > 1 ? `${group.notifications.length} notifications grouped together.` : notification.post_id ? 'Tap to jump back into the conversation.' : 'Tap to open the most relevant place in the app.'}
                       </p>
                     </div>
                   </div>
-                  {!notification.is_read ? <span className="rounded-full bg-[rgb(var(--accent))] px-2 py-1 text-xs font-bold text-white">New</span> : null}
+                  {group.unread ? <span className="rounded-full bg-[rgb(var(--accent))] px-2 py-1 text-xs font-bold text-white">New</span> : null}
                 </div>
                 <p className="mt-4 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">
-                  {new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(notification.created_at))}
+                  {formatRelativeTime(notification.created_at)}
                 </p>
               </button>
             </Card>
-          ))}
+          );
+          })}
         </div>
       ) : (
         <EmptyState

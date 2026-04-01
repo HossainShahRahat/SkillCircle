@@ -9,15 +9,7 @@ import { Button } from '../components/Button.jsx';
 import { useAuthStore } from '../store/authStore.js';
 import { api } from '../services/api.js';
 import { useAppStore } from '../store/appStore.js';
-
-async function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Unable to read avatar file.'));
-    reader.readAsDataURL(file);
-  });
-}
+import { fileToDataUrl } from '../utils/uploads.js';
 
 export function ProfilePage() {
   const { userId } = useParams();

@@ -1,12 +1,10 @@
 import { Avatar } from './Avatar.jsx';
 import { ChatMediaPreview } from './ChatMediaPreview.jsx';
 import { MessageStatusIcon } from './MessageStatusIcon.jsx';
+import { formatRelativeTime } from '../utils/time.js';
 
 function formatTime(value) {
-  return new Intl.DateTimeFormat('en', {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value));
+  return formatRelativeTime(value);
 }
 
 function highlight(text, query) {
@@ -32,7 +30,7 @@ export function MessageBubble({
   const isOwn = message.user_id === currentUser?.id || message.sender_id === currentUser?.id;
 
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+    <div className={`animate-[message-in_180ms_ease-out] flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex max-w-[88%] items-end gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}>
         <Avatar user={message.author} size="sm" />
         <div className="group">

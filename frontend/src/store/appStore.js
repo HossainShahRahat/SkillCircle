@@ -78,6 +78,7 @@ export const useAppStore = create((set, get) => ({
   activeDirectChatId: null,
   directMessagesByChat: {},
   directMessagesLoading: false,
+  socketConnected: false,
   typingState: {
     circle: {},
     direct: {},
@@ -843,5 +844,8 @@ export const useAppStore = create((set, get) => ({
   },
   dismissToast(id) {
     set({ toasts: get().toasts.filter((toast) => toast.id !== id) });
+  },
+  setSocketConnected(socketConnected) {
+    set({ socketConnected });
   },
 }));

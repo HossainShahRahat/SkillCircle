@@ -15,6 +15,7 @@ export function DirectMessagesPage() {
   const activeDirectChatId = useAppStore((state) => state.activeDirectChatId);
   const directMessages = useAppStore((state) => state.directMessagesByChat[activeDirectChatId] ?? EMPTY_MESSAGES);
   const typingState = useAppStore((state) => state.typingState);
+  const socketConnected = useAppStore((state) => state.socketConnected);
   const loadDirectChats = useAppStore((state) => state.loadDirectChats);
   const createDirectChat = useAppStore((state) => state.createDirectChat);
   const loadDirectMessages = useAppStore((state) => state.loadDirectMessages);
@@ -101,6 +102,7 @@ export function DirectMessagesPage() {
           messages={directMessages}
           currentUser={user}
           typingUsers={typingUsers}
+          isOnline={socketConnected}
           draft={draft}
           onDraftChange={setDraft}
           onSend={async ({ content, attachment }) => {

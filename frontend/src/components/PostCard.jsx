@@ -7,14 +7,10 @@ import { InlineEditor } from './InlineEditor.jsx';
 import { MentionText } from './MentionText.jsx';
 import { ReactionBar } from './ReactionBar.jsx';
 import { Avatar } from './Avatar.jsx';
+import { formatRelativeTime } from '../utils/time.js';
 
 function formatTime(value) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value));
+  return formatRelativeTime(value);
 }
 
 export function PostCard({
@@ -43,14 +39,14 @@ export function PostCard({
   }
 
   return (
-    <Card className="p-5 sm:p-6">
+    <Card className="p-5 sm:p-6 transition hover:border-[rgba(var(--accent),0.2)]">
       <div className="mb-5 flex items-start gap-4">
         <Avatar user={post.author} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold">{post.author?.name}</p>
             {post.circle ? (
-              <span className="rounded-full bg-[rgb(var(--accent-soft))] px-2 py-1 text-xs font-semibold text-[rgb(var(--text))]">
+              <span className="rounded-full bg-[rgb(var(--accent-soft))] px-2.5 py-1 text-xs font-semibold text-[rgb(var(--text))]">
                 {post.circle.name}
               </span>
             ) : null}
@@ -92,6 +88,7 @@ export function PostCard({
         <img
           src={post.image_url}
           alt="Post attachment"
+          loading="lazy"
           className="mt-5 h-[320px] w-full rounded-[24px] object-cover"
         />
       ) : null}

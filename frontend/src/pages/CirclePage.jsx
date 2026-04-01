@@ -30,6 +30,7 @@ export function CirclePage() {
   const loadCircleAnalytics = useAppStore((state) => state.loadCircleAnalytics);
   const messages = useAppStore((state) => state.messages);
   const messagesLoading = useAppStore((state) => state.messagesLoading);
+  const socketConnected = useAppStore((state) => state.socketConnected);
   const sendMessage = useAppStore((state) => state.sendMessage);
   const markCircleMessages = useAppStore((state) => state.markCircleMessages);
   const reactToCircleMessage = useAppStore((state) => state.reactToCircleMessage);
@@ -318,6 +319,7 @@ export function CirclePage() {
               messages={messages}
               currentUser={user}
               typingUsers={typingUsers}
+              isOnline={socketConnected}
               draft={chatDraft}
               onDraftChange={setChatDraft}
               onSend={async ({ content, attachment }) => {

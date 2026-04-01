@@ -5,9 +5,11 @@ import { Sidebar } from '../components/Sidebar.jsx';
 import { RightPanel } from '../components/RightPanel.jsx';
 import { CreatePostModal } from '../components/CreatePostModal.jsx';
 import { CreateCircleModal } from '../components/CreateCircleModal.jsx';
+import { FeatureTips } from '../components/FeatureTips.jsx';
 import { JoinByCodeModal } from '../components/JoinByCodeModal.jsx';
 import { BottomNav } from '../components/BottomNav.jsx';
 import { NotificationBell } from '../components/NotificationBell.jsx';
+import { OnboardingFlow } from '../components/OnboardingFlow.jsx';
 import { SearchBar } from '../components/SearchBar.jsx';
 import { ToastViewport } from '../components/ToastViewport.jsx';
 import { Button } from '../components/Button.jsx';
@@ -21,8 +23,10 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
   const token = useAuthStore((state) => state.token);
   const refreshUser = useAuthStore((state) => state.refreshUser);
+  const posts = useAppStore((state) => state.posts);
   const circles = useAppStore((state) => state.circles);
   const loadCircles = useAppStore((state) => state.loadCircles);
   const modalOpen = useAppStore((state) => state.modalOpen);
@@ -45,6 +49,7 @@ export function AppLayout() {
   const ingestRealtimeCommentDeletion = useAppStore((state) => state.ingestRealtimeCommentDeletion);
   const applyReactionSummary = useAppStore((state) => state.applyReactionSummary);
   const flushOfflineMessages = useAppStore((state) => state.flushOfflineMessages);
+  const setSocketConnected = useAppStore((state) => state.setSocketConnected);
   const submitting = useAppStore((state) => state.submitting);
   const [circleModalOpen, setCircleModalOpen] = useState(false);
   const [joinCodeModalOpen, setJoinCodeModalOpen] = useState(false);
@@ -81,10 +86,15 @@ export function AppLayout() {
     const handleCommentDeleted = ({ postId, commentId }) => ingestRealtimeCommentDeletion(postId, commentId);
 
     const handleConnect = () => {
+      setSocketConnected(true);
       flushOfflineMessages(user).catch(() => null);
+    };
+    const handleDisconnect = () => {
+      setSocketConnected(false);
     };
 
     socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
     socket.on('new_post', handleNewPost);
     socket.on('new_comment', handleNewComment);
     socket.on('new_notification', handleNewNotification);
@@ -102,6 +112,7 @@ export function AppLayout() {
 
     return () => {
       socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.off('new_post', handleNewPost);
       socket.off('new_comment', handleNewComment);
       socket.off('new_notification', handleNewNotification);
@@ -117,7 +128,7 @@ export function AppLayout() {
       socket.off('comment_updated', handleCommentUpdated);
       socket.off('comment_deleted', handleCommentDeleted);
     };
-  }, [token, user, ingestRealtimePost, ingestRealtimeComment, ingestRealtimeNotification, ingestRealtimeMessage, ingestRealtimeMessageStatus, ingestRealtimeMessageReaction, ingestTyping, ingestRealtimePostUpdate, ingestRealtimePostDeletion, ingestRealtimeCommentUpdate, ingestRealtimeCommentDeletion, applyReactionSummary, flushOfflineMessages]);
+  }, [token, user, ingestRealtimePost, ingestRealtimeComment, ingestRealtimeNotification, ingestRealtimeMessage, ingestRealtimeMessageStatus, ingestRealtimeMessageReaction, ingestTyping, ingestRealtimePostUpdate, ingestRealtimePostDeletion, ingestRealtimeCommentUpdate, ingestRealtimeCommentDeletion, applyReactionSummary, flushOfflineMessages, setSocketConnected]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -190,6 +201,8 @@ export function AppLayout() {
           </div>
         </div>
 
+        <FeatureTips user={user} onCompose={() => setModalOpen(true)} />
+
         <div className="flex min-w-0 flex-col gap-6 2xl:flex-row">
           <main className="min-w-0 flex-1">
             <Outlet />
@@ -240,6 +253,20 @@ export function AppLayout() {
 
       <ToastViewport />
       <BottomNav onCompose={() => setModalOpen(true)} />
+      <OnboardingFlow
+        user={user}
+        circles={circles}
+        joinedCirclesCount={circles.filter((circle) => circle.joined).length}
+        myPostsCount={posts.filter((post) => post.author?.id === user?.id).length}
+        joinCircle={joinCircle}
+        createCircle={createCircle}
+        createPost={createPost}
+        setUser={setUser}
+        onComplete={() => {
+          loadCircles();
+          refreshUser();
+        }}
+      />
     </div>
   );
 }
