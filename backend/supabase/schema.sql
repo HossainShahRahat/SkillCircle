@@ -40,6 +40,9 @@ create table if not exists posts (
   circle_id uuid references circles(id) on delete set null,
   content text not null,
   image_url text default '',
+  scheduled_for timestamptz,
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -49,6 +52,8 @@ create table if not exists comments (
   post_id uuid not null references posts(id) on delete cascade,
   content text not null,
   mentioned_users uuid[] not null default '{}',
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -58,6 +63,16 @@ create table if not exists likes (
   post_id uuid not null references posts(id) on delete cascade,
   created_at timestamptz not null default now(),
   unique (user_id, post_id)
+);
+
+create table if not exists reactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  reference_type text not null check (reference_type in ('post', 'comment')),
+  reference_id uuid not null,
+  type text not null check (type in ('like', 'heart', 'fire', 'celebrate')),
+  created_at timestamptz not null default now(),
+  unique (user_id, reference_type, reference_id)
 );
 
 create table if not exists notifications (
@@ -84,6 +99,12 @@ create index if not exists idx_likes_post_id on likes (post_id);
 create index if not exists idx_circle_members_circle_id on circle_members (circle_id);
 create index if not exists idx_notifications_user_id on notifications (user_id, created_at desc);
 create index if not exists idx_messages_circle_id on messages (circle_id, created_at asc);
+create index if not exists idx_reactions_reference on reactions (reference_type, reference_id);
 
 alter table notifications add column if not exists is_read boolean not null default false;
 alter table comments add column if not exists mentioned_users uuid[] not null default '{}';
+alter table posts add column if not exists updated_at timestamptz not null default now();
+alter table posts add column if not exists deleted_at timestamptz;
+alter table posts add column if not exists scheduled_for timestamptz;
+alter table comments add column if not exists updated_at timestamptz not null default now();
+alter table comments add column if not exists deleted_at timestamptz;

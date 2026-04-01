@@ -60,6 +60,8 @@ export const demoPosts = [
     circle_id: 'c_demo_1',
     content: 'Day 5 of rebuilding my component library. Today I replaced one-off spacing hacks with a token scale and the UI finally feels breathable.',
     image_url: '',
+    updated_at: '2026-03-31T12:30:00.000Z',
+    deleted_at: null,
     created_at: '2026-03-31T12:30:00.000Z',
   },
   {
@@ -68,6 +70,8 @@ export const demoPosts = [
     circle_id: 'c_demo_2',
     content: 'Mapped a caching strategy for a feed service tonight. The biggest unlock was treating freshness as a product choice, not just an engineering one.',
     image_url: '',
+    updated_at: '2026-03-31T18:00:00.000Z',
+    deleted_at: null,
     created_at: '2026-03-31T18:00:00.000Z',
   },
 ];
@@ -79,6 +83,8 @@ export const demoComments = [
     post_id: 'p_demo_1',
     content: 'The token-scale insight is real, @MayaChen. That usually makes everything else snap into place.',
     mentioned_users: ['u_demo_1'],
+    updated_at: '2026-03-31T13:00:00.000Z',
+    deleted_at: null,
     created_at: '2026-03-31T13:00:00.000Z',
   },
 ];
@@ -123,5 +129,24 @@ export const demoMessages = [
     user_id: 'u_demo_2',
     content: 'Love that. Share the spacing tokens when you have them.',
     created_at: '2026-03-31T10:04:00.000Z',
+  },
+];
+
+export const demoReactions = [
+  {
+    id: 'r_demo_1',
+    user_id: 'u_demo_2',
+    reference_type: 'post',
+    reference_id: 'p_demo_1',
+    type: 'heart',
+    created_at: '2026-03-31T13:06:00.000Z',
+  },
+  {
+    id: 'r_demo_2',
+    user_id: 'u_demo_1',
+    reference_type: 'comment',
+    reference_id: 'co_demo_1',
+    type: 'celebrate',
+    created_at: '2026-03-31T13:10:00.000Z',
   },
 ];

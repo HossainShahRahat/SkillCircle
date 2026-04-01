@@ -10,6 +10,7 @@ import { circleRoutes } from './routes/circleRoutes.js';
 import { notificationRoutes } from './routes/notificationRoutes.js';
 import { searchRoutes } from './routes/searchRoutes.js';
 import { messageRoutes } from './routes/messageRoutes.js';
+import { reactionRoutes } from './routes/reactionRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { attachCurrentUser } from './middleware/authMiddleware.js';
 import { initializeSocketServer } from './services/socketServer.js';
@@ -46,6 +47,7 @@ app.use('/api/circles', circleRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/reactions', reactionRoutes);
 
 app.use(errorHandler);
 

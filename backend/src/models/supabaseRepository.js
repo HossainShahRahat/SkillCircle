@@ -37,6 +37,20 @@ function profileStatsFromData(userId, posts, likes, circleMembers) {
   };
 }
 
+function summarizeReactions(reactions, currentUserId) {
+  const counts = (reactions || []).reduce((accumulator, reaction) => {
+    accumulator[reaction.type] = (accumulator[reaction.type] || 0) + 1;
+    return accumulator;
+  }, {});
+  return {
+    counts,
+    total: (reactions || []).length,
+    myReaction: currentUserId
+      ? (reactions || []).find((reaction) => reaction.user_id === currentUserId)?.type || null
+      : null,
+  };
+}
+
 export function createSupabaseRepository() {
   const supabase = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
     auth: {
@@ -72,6 +86,9 @@ export function createSupabaseRepository() {
       circle_id,
       content,
       image_url,
+      scheduled_for,
+      updated_at,
+      deleted_at,
       created_at,
       users:user_id ( id, name, email, bio, avatar_url, skills, created_at ),
       circles:circle_id ( id, name, description, is_private, invite_code, created_by, created_at ),
@@ -81,6 +98,8 @@ export function createSupabaseRepository() {
         post_id,
         content,
         mentioned_users,
+        updated_at,
+        deleted_at,
         created_at,
         users:user_id ( id, name, email, bio, avatar_url, skills, created_at )
       ),
@@ -91,19 +110,27 @@ export function createSupabaseRepository() {
     if (circleId) {
       query = query.eq('circle_id', circleId);
     }
+    query = query.is('deleted_at', null);
 
     const { data, error } = await query;
     if (error) throw error;
 
-    const mentionedUserIds = Array.from(
-      new Set(
-        data.flatMap((post) => (post.comments || []).flatMap((comment) => comment.mentioned_users || [])),
-      ),
-    );
-    const { data: mentionedUsers } = mentionedUserIds.length
-      ? await supabase.from('users').select('id, name').in('id', mentionedUserIds)
-      : { data: [] };
-    const mentionedUsersMap = new Map((mentionedUsers || []).map((user) => [user.id, user]));
+      const visibleComments = data.flatMap((post) => (post.comments || []).filter((comment) => !comment.deleted_at));
+      const mentionedUserIds = Array.from(new Set(visibleComments.flatMap((comment) => comment.mentioned_users || [])));
+      const { data: mentionedUsers } = mentionedUserIds.length
+        ? await supabase.from('users').select('id, name').in('id', mentionedUserIds)
+        : { data: [] };
+      const mentionedUsersMap = new Map((mentionedUsers || []).map((user) => [user.id, user]));
+      const postIds = data.map((post) => post.id);
+      const commentIds = visibleComments.map((comment) => comment.id);
+      const { data: postReactions } = postIds.length
+        ? await supabase.from('reactions').select('id, user_id, type, reference_id').eq('reference_type', 'post').in('reference_id', postIds)
+        : { data: [] };
+      const { data: commentReactions } = commentIds.length
+        ? await supabase.from('reactions').select('id, user_id, type, reference_id').eq('reference_type', 'comment').in('reference_id', commentIds)
+        : { data: [] };
+      const postReactionsMap = new Map(postIds.map((id) => [id, (postReactions || []).filter((reaction) => reaction.reference_id === id)]));
+      const commentReactionsMap = new Map(commentIds.map((id) => [id, (commentReactions || []).filter((reaction) => reaction.reference_id === id)]));
 
     return data.map((post) => ({
       id: post.id,
@@ -114,7 +141,7 @@ export function createSupabaseRepository() {
       created_at: post.created_at,
       author: mapUser(post.users),
       circle: post.circles,
-      comments: (post.comments || []).map((comment) => ({
+      comments: (post.comments || []).filter((comment) => !comment.deleted_at).map((comment) => ({
         ...comment,
         author: mapUser(comment.users),
         mentionedUsers: buildMentionPayload(
@@ -122,12 +149,16 @@ export function createSupabaseRepository() {
             .map((mentionedUserId) => mentionedUsersMap.get(mentionedUserId))
             .filter(Boolean),
         ),
+        reactions: summarizeReactions(commentReactionsMap.get(comment.id), currentUserId),
+        isEdited: comment.updated_at && comment.updated_at !== comment.created_at,
       })),
-      commentsCount: (post.comments || []).length,
+      commentsCount: (post.comments || []).filter((comment) => !comment.deleted_at).length,
       likesCount: (post.likes || []).length,
       likedByMe: currentUserId
         ? (post.likes || []).some((like) => like.user_id === currentUserId)
         : false,
+      reactions: summarizeReactions(postReactionsMap.get(post.id), currentUserId),
+      isEdited: post.updated_at && post.updated_at !== post.created_at,
     }));
   }
 
@@ -199,7 +230,7 @@ export function createSupabaseRepository() {
     async getFeed(currentUserId, circleId = null) {
       return loadPosts(currentUserId, circleId);
     },
-    async createPost({ userId, content, imageUrl, circleId }) {
+    async createPost({ userId, content, imageUrl, circleId, scheduledFor = null }) {
       const { error } = await supabase
         .from('posts')
         .insert({
@@ -207,11 +238,22 @@ export function createSupabaseRepository() {
           content,
           image_url: imageUrl,
           circle_id: circleId || null,
+          scheduled_for: scheduledFor,
         });
       if (error) throw error;
 
       const posts = await loadPosts(userId, circleId || null);
       return posts[0];
+    },
+    async getCommentById(commentId) {
+      const { data, error } = await supabase
+        .from('comments')
+        .select('id, user_id, post_id, content, mentioned_users, updated_at, deleted_at, created_at')
+        .eq('id', commentId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data || data.deleted_at) return null;
+      return data;
     },
     async getPostById(postId, currentUserId) {
       const { data, error } = await supabase
@@ -222,6 +264,9 @@ export function createSupabaseRepository() {
           circle_id,
           content,
           image_url,
+          scheduled_for,
+          updated_at,
+          deleted_at,
           created_at,
           users:user_id ( id, name, email, bio, avatar_url, skills, created_at ),
           circles:circle_id ( id, name, description, is_private, invite_code, created_by, created_at ),
@@ -231,6 +276,8 @@ export function createSupabaseRepository() {
             post_id,
             content,
             mentioned_users,
+            updated_at,
+            deleted_at,
             created_at,
             users:user_id ( id, name, email, bio, avatar_url, skills, created_at )
           ),
@@ -239,15 +286,25 @@ export function createSupabaseRepository() {
         .eq('id', postId)
         .maybeSingle();
       if (error) throw error;
-      if (!data) return null;
+      if (!data || data.deleted_at) return null;
 
       const mentionedUserIds = Array.from(
-        new Set((data.comments || []).flatMap((comment) => comment.mentioned_users || [])),
+        new Set((data.comments || []).filter((comment) => !comment.deleted_at).flatMap((comment) => comment.mentioned_users || [])),
       );
       const { data: mentionedUsers } = mentionedUserIds.length
         ? await supabase.from('users').select('id, name').in('id', mentionedUserIds)
         : { data: [] };
       const mentionedUsersMap = new Map((mentionedUsers || []).map((user) => [user.id, user]));
+      const commentIds = (data.comments || []).filter((comment) => !comment.deleted_at).map((comment) => comment.id);
+      const { data: postReactions } = await supabase
+        .from('reactions')
+        .select('id, user_id, type, reference_id')
+        .eq('reference_type', 'post')
+        .eq('reference_id', data.id);
+      const { data: commentReactions } = commentIds.length
+        ? await supabase.from('reactions').select('id, user_id, type, reference_id').eq('reference_type', 'comment').in('reference_id', commentIds)
+        : { data: [] };
+      const commentReactionsMap = new Map(commentIds.map((id) => [id, (commentReactions || []).filter((reaction) => reaction.reference_id === id)]));
 
       return {
         id: data.id,
@@ -258,7 +315,7 @@ export function createSupabaseRepository() {
         created_at: data.created_at,
         author: mapUser(data.users),
         circle: data.circles,
-        comments: (data.comments || []).map((comment) => ({
+        comments: (data.comments || []).filter((comment) => !comment.deleted_at).map((comment) => ({
           ...comment,
           author: mapUser(comment.users),
           mentionedUsers: buildMentionPayload(
@@ -266,12 +323,16 @@ export function createSupabaseRepository() {
               .map((mentionedUserId) => mentionedUsersMap.get(mentionedUserId))
               .filter(Boolean),
           ),
+          reactions: summarizeReactions(commentReactionsMap.get(comment.id), currentUserId),
+          isEdited: comment.updated_at && comment.updated_at !== comment.created_at,
         })),
-        commentsCount: (data.comments || []).length,
+        commentsCount: (data.comments || []).filter((comment) => !comment.deleted_at).length,
         likesCount: (data.likes || []).length,
         likedByMe: currentUserId
           ? (data.likes || []).some((like) => like.user_id === currentUserId)
           : false,
+        reactions: summarizeReactions(postReactions, currentUserId),
+        isEdited: data.updated_at && data.updated_at !== data.created_at,
       };
     },
     async toggleLike(postId, userId) {
@@ -320,6 +381,8 @@ export function createSupabaseRepository() {
           post_id,
           content,
           mentioned_users,
+          updated_at,
+          deleted_at,
           created_at,
           users:user_id ( id, name, email, bio, avatar_url, skills, created_at )
         `)
@@ -340,8 +403,43 @@ export function createSupabaseRepository() {
             }),
           )).filter(Boolean),
         ),
+        reactions: summarizeReactions([], userId),
         notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
       };
+    },
+    async toggleReaction({ userId, referenceType, referenceId, reactionType }) {
+      const { data: existing, error: existingError } = await supabase
+        .from('reactions')
+        .select('id, type')
+        .eq('user_id', userId)
+        .eq('reference_type', referenceType)
+        .eq('reference_id', referenceId)
+        .maybeSingle();
+      if (existingError) throw existingError;
+
+      if (existing && existing.type === reactionType) {
+        const { error } = await supabase.from('reactions').delete().eq('id', existing.id);
+        if (error) throw error;
+      } else if (existing) {
+        const { error } = await supabase.from('reactions').update({ type: reactionType }).eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('reactions').insert({
+          user_id: userId,
+          reference_type: referenceType,
+          reference_id: referenceId,
+          type: reactionType,
+        });
+        if (error) throw error;
+      }
+
+      const { data, error } = await supabase
+        .from('reactions')
+        .select('id, user_id, type')
+        .eq('reference_type', referenceType)
+        .eq('reference_id', referenceId);
+      if (error) throw error;
+      return summarizeReactions(data, userId);
     },
     async listCircles(userId) {
       const { data, error } = await supabase
@@ -545,6 +643,17 @@ export function createSupabaseRepository() {
             role: member.role,
           }))
           : [],
+      };
+    },
+    async searchCircle(circleId, query, userId) {
+      const [posts, members] = await Promise.all([
+        loadPosts(userId, circleId),
+        this.listCircleMembers(circleId, userId),
+      ]);
+      const normalizedQuery = query.toLowerCase();
+      return {
+        posts: posts.filter((post) => post.content.toLowerCase().includes(normalizedQuery)),
+        members: members.filter((member) => member.name.toLowerCase().includes(normalizedQuery)),
       };
     },
     async createNotification({ userId, type, referenceId, triggeredBy }) {
@@ -769,8 +878,6 @@ export function createSupabaseRepository() {
         author: mapUser(data.users),
       };
     },
-  };
-}
     async listCircleMembers(circleId, userId) {
       const { data: circleAccess, error: circleError } = await supabase
         .from('circles')
@@ -798,3 +905,125 @@ export function createSupabaseRepository() {
 
       return members;
     },
+    async getCircleRole(circleId, userId) {
+      const { data, error } = await supabase
+        .from('circle_members')
+        .select('role')
+        .eq('circle_id', circleId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.role || null;
+    },
+    async updateCircleMemberRole(circleId, targetUserId, role, actingUserId) {
+      const actingRole = await this.getCircleRole(circleId, actingUserId);
+      if (actingRole !== 'admin') {
+        const permissionError = new Error('Only admins can manage member roles.');
+        permissionError.status = 403;
+        throw permissionError;
+      }
+      if (targetUserId === actingUserId) {
+        const selfError = new Error('Admins cannot change their own role.');
+        selfError.status = 400;
+        throw selfError;
+      }
+
+      const { data, error } = await supabase
+        .from('circle_members')
+        .update({ role })
+        .eq('circle_id', circleId)
+        .eq('user_id', targetUserId)
+        .select(`
+          role,
+          users:user_id ( id, name, email, bio, avatar_url, skills, created_at )
+        `)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        const notFound = new Error('Member not found.');
+        notFound.status = 404;
+        throw notFound;
+      }
+      return {
+        ...mapUser(data.users),
+        role: data.role,
+      };
+    },
+    async updatePost(postId, userId, content) {
+      const { data, error } = await supabase
+        .from('posts')
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq('id', postId)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return this.getPostById(postId, userId);
+    },
+    async softDeletePost(postId) {
+      const { data, error } = await supabase
+        .from('posts')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', postId)
+        .select('id, circle_id')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    async updateComment(commentId, userId, content, mentionedUserIds = []) {
+      const { data, error } = await supabase
+        .from('comments')
+        .update({
+          content,
+          mentioned_users: mentionedUserIds,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', commentId)
+        .select(`
+          id,
+          user_id,
+          post_id,
+          content,
+          mentioned_users,
+          updated_at,
+          deleted_at,
+          created_at,
+          users:user_id ( id, name, email, bio, avatar_url, skills, created_at )
+        `)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+
+      const { data: mentionedUsers } = mentionedUserIds.length
+        ? await supabase.from('users').select('id, name').in('id', mentionedUserIds)
+        : { data: [] };
+      const { data: reactionRows } = await supabase
+        .from('reactions')
+        .select('id, user_id, type')
+        .eq('reference_type', 'comment')
+        .eq('reference_id', commentId);
+
+      return {
+        ...data,
+        author: mapUser(data.users),
+        mentionedUsers: buildMentionPayload(mentionedUsers || []),
+        reactions: summarizeReactions(reactionRows, userId),
+        isEdited: true,
+      };
+    },
+    async softDeleteComment(commentId) {
+      const { data, error } = await supabase
+        .from('comments')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', commentId)
+        .select('id, post_id')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    async canModerateCircleContent(circleId, userId) {
+      const role = await this.getCircleRole(circleId, userId);
+      return ['admin', 'moderator'].includes(role);
+    },
+  };
+}

@@ -6,14 +6,18 @@ import {
   joinCircleByCode,
   leaveCircle,
   listCircles,
+  searchCircle,
+  updateCircleMemberRole,
 } from '../controllers/circleController.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 
 export const circleRoutes = Router();
 
 circleRoutes.get('/', listCircles);
+circleRoutes.get('/:circleId/search', searchCircle);
 circleRoutes.get('/:circleId', getCircle);
 circleRoutes.post('/', requireAuth, createCircle);
 circleRoutes.post('/join-by-code', requireAuth, joinCircleByCode);
 circleRoutes.post('/:circleId/join', requireAuth, joinCircle);
+circleRoutes.patch('/:circleId/members/:userId/role', requireAuth, updateCircleMemberRole);
 circleRoutes.delete('/:circleId/leave', requireAuth, leaveCircle);

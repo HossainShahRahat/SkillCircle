@@ -98,3 +98,34 @@ export async function getCircle(req, res, next) {
     next(error);
   }
 }
+
+export async function searchCircle(req, res, next) {
+  try {
+    const query = req.query.q?.trim() || '';
+    if (!query) {
+      return res.json({ posts: [], members: [] });
+    }
+    const results = await repository.searchCircle(req.params.circleId, query, req.user?.id || null);
+    res.json(results);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateCircleMemberRole(req, res, next) {
+  try {
+    const { role } = req.body;
+    if (!['admin', 'moderator', 'member'].includes(role)) {
+      throw badRequest('A valid role is required.');
+    }
+    const member = await repository.updateCircleMemberRole(
+      req.params.circleId,
+      req.params.userId,
+      role,
+      req.user.id,
+    );
+    res.json({ member });
+  } catch (error) {
+    next(error);
+  }
+}

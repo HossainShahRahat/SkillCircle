@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Settings2 } from 'lucide-react';
+import { Search, Settings2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { CircleBadge } from '../components/CircleBadge.jsx';
 import { CircleChatPanel } from '../components/CircleChatPanel.jsx';
+import { CircleMemberPanel } from '../components/CircleMemberPanel.jsx';
 import { JoinByCodeModal } from '../components/JoinByCodeModal.jsx';
 import { PostCard } from '../components/PostCard.jsx';
 import { useAppStore } from '../store/appStore.js';
@@ -19,6 +20,10 @@ export function CirclePage() {
   const activeCircle = useAppStore((state) => state.activeCircle);
   const loadCircle = useAppStore((state) => state.loadCircle);
   const loadMessages = useAppStore((state) => state.loadMessages);
+  const searchCircle = useAppStore((state) => state.searchCircle);
+  const clearCircleSearch = useAppStore((state) => state.clearCircleSearch);
+  const circleSearchResults = useAppStore((state) => state.circleSearchResults);
+  const circleSearchLoading = useAppStore((state) => state.circleSearchLoading);
   const messages = useAppStore((state) => state.messages);
   const messagesLoading = useAppStore((state) => state.messagesLoading);
   const sendMessage = useAppStore((state) => state.sendMessage);
@@ -26,11 +31,17 @@ export function CirclePage() {
   const joinCircle = useAppStore((state) => state.joinCircle);
   const joinCircleByCode = useAppStore((state) => state.joinCircleByCode);
   const leaveCircle = useAppStore((state) => state.leaveCircle);
-  const likePost = useAppStore((state) => state.likePost);
   const commentOnPost = useAppStore((state) => state.commentOnPost);
+  const toggleReaction = useAppStore((state) => state.toggleReaction);
+  const updatePost = useAppStore((state) => state.updatePost);
+  const deletePost = useAppStore((state) => state.deletePost);
+  const updateComment = useAppStore((state) => state.updateComment);
+  const deleteComment = useAppStore((state) => state.deleteComment);
+  const updateCircleMemberRole = useAppStore((state) => state.updateCircleMemberRole);
   const setModalOpen = useAppStore((state) => state.setModalOpen);
   const showToast = useAppStore((state) => state.showToast);
   const [joinCodeModalOpen, setJoinCodeModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadCircle(circleId);
@@ -51,6 +62,17 @@ export function CirclePage() {
       loadMessages(circleId);
     }
   }, [activeCircle?.joined, circleId, loadMessages]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!searchQuery.trim()) {
+        clearCircleSearch();
+        return;
+      }
+      searchCircle(circleId, searchQuery);
+    }, 220);
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchCircle, circleId, clearCircleSearch]);
 
   if (!activeCircle) {
     return (
@@ -146,15 +168,70 @@ export function CirclePage() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
+          <Card className="p-5">
+            <div className="flex items-center gap-3 rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3">
+              <Search size={16} className="text-[rgb(var(--muted))]" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search posts or members in this circle"
+                className="w-full bg-transparent text-sm placeholder:text-[rgb(var(--muted))]"
+              />
+            </div>
+            {searchQuery.trim() ? (
+              <div className="mt-4 space-y-4">
+                {circleSearchLoading ? (
+                  <div className="h-16 animate-pulse rounded-2xl bg-[rgb(var(--bg-soft))]" />
+                ) : (
+                  <>
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-[rgb(var(--muted))]">Matching posts</p>
+                      {circleSearchResults.posts.length ? (
+                        <div className="space-y-2">
+                          {circleSearchResults.posts.slice(0, 3).map((result) => (
+                            <div key={result.id} className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-3 text-sm">
+                              {result.content}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="muted-copy">No posts match yet.</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-[rgb(var(--muted))]">Matching members</p>
+                      {circleSearchResults.members.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {circleSearchResults.members.map((member) => (
+                            <span key={member.id} className="rounded-full bg-[rgb(var(--accent-soft))] px-3 py-2 text-sm font-semibold">
+                              {member.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="muted-copy">No members match yet.</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </Card>
+
           {posts.length ? (
             posts.map((post) => (
               <PostCard
                 key={post.id}
                 post={post}
                 user={user}
-                onLike={likePost}
                 onComment={(postId, content) => commentOnPost(postId, content, user)}
+                onReact={toggleReaction}
+                onUpdatePost={updatePost}
+                onDeletePost={deletePost}
+                onUpdateComment={updateComment}
+                onDeleteComment={deleteComment}
                 activeMembers={activeCircle.members || []}
+                canModerate={['admin', 'moderator'].includes(activeCircle.myRole)}
               />
             ))
           ) : (
@@ -166,12 +243,20 @@ export function CirclePage() {
         </div>
 
         {activeCircle.joined ? (
-          <CircleChatPanel
-            messages={messages}
-            user={user}
-            loading={messagesLoading}
-            onSend={(content) => sendMessage(circleId, content)}
-          />
+          <div className="space-y-5">
+            <CircleChatPanel
+              messages={messages}
+              user={user}
+              loading={messagesLoading}
+              onSend={(content) => sendMessage(circleId, content)}
+            />
+            <CircleMemberPanel
+              members={activeCircle.members || []}
+              myRole={activeCircle.myRole}
+              currentUserId={user?.id}
+              onRoleChange={(memberId, role) => updateCircleMemberRole(circleId, memberId, role)}
+            />
+          </div>
         ) : (
           <Card className="p-6">
             <p className="text-lg font-bold">Circle chat</p>

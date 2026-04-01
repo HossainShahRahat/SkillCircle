@@ -11,8 +11,12 @@ export function DashboardPage() {
   const posts = useAppStore((state) => state.posts);
   const loadFeed = useAppStore((state) => state.loadFeed);
   const loadingFeed = useAppStore((state) => state.loadingFeed);
-  const likePost = useAppStore((state) => state.likePost);
   const commentOnPost = useAppStore((state) => state.commentOnPost);
+  const toggleReaction = useAppStore((state) => state.toggleReaction);
+  const updatePost = useAppStore((state) => state.updatePost);
+  const deletePost = useAppStore((state) => state.deletePost);
+  const updateComment = useAppStore((state) => state.updateComment);
+  const deleteComment = useAppStore((state) => state.deleteComment);
   const setModalOpen = useAppStore((state) => state.setModalOpen);
 
   useEffect(() => {
@@ -73,8 +77,12 @@ export function DashboardPage() {
             key={post.id}
             post={post}
             user={user}
-            onLike={likePost}
             onComment={(postId, content) => commentOnPost(postId, content, user)}
+            onReact={toggleReaction}
+            onUpdatePost={updatePost}
+            onDeletePost={deletePost}
+            onUpdateComment={updateComment}
+            onDeleteComment={deleteComment}
           />
         ))
       ) : (

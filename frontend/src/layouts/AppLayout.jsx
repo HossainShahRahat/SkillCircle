@@ -34,6 +34,11 @@ export function AppLayout() {
   const ingestRealtimeComment = useAppStore((state) => state.ingestRealtimeComment);
   const ingestRealtimeNotification = useAppStore((state) => state.ingestRealtimeNotification);
   const ingestRealtimeMessage = useAppStore((state) => state.ingestRealtimeMessage);
+  const ingestRealtimePostUpdate = useAppStore((state) => state.ingestRealtimePostUpdate);
+  const ingestRealtimePostDeletion = useAppStore((state) => state.ingestRealtimePostDeletion);
+  const ingestRealtimeCommentUpdate = useAppStore((state) => state.ingestRealtimeCommentUpdate);
+  const ingestRealtimeCommentDeletion = useAppStore((state) => state.ingestRealtimeCommentDeletion);
+  const applyReactionSummary = useAppStore((state) => state.applyReactionSummary);
   const submitting = useAppStore((state) => state.submitting);
   const [circleModalOpen, setCircleModalOpen] = useState(false);
   const [joinCodeModalOpen, setJoinCodeModalOpen] = useState(false);
@@ -55,12 +60,22 @@ export function AppLayout() {
     const handleNewNotification = ({ notification }) => ingestRealtimeNotification(notification);
     const handleNewMention = ({ notification }) => ingestRealtimeNotification(notification);
     const handleNewMessage = ({ message }) => ingestRealtimeMessage(message);
+    const handleReactionUpdated = ({ referenceType, referenceId, reactions }) => applyReactionSummary(referenceType, referenceId, reactions);
+    const handlePostUpdated = ({ post }) => ingestRealtimePostUpdate(post);
+    const handlePostDeleted = ({ postId }) => ingestRealtimePostDeletion(postId);
+    const handleCommentUpdated = ({ postId, comment }) => ingestRealtimeCommentUpdate(postId, comment);
+    const handleCommentDeleted = ({ postId, commentId }) => ingestRealtimeCommentDeletion(postId, commentId);
 
     socket.on('new_post', handleNewPost);
     socket.on('new_comment', handleNewComment);
     socket.on('new_notification', handleNewNotification);
     socket.on('new_mention', handleNewMention);
     socket.on('new_message', handleNewMessage);
+    socket.on('reaction_updated', handleReactionUpdated);
+    socket.on('post_updated', handlePostUpdated);
+    socket.on('post_deleted', handlePostDeleted);
+    socket.on('comment_updated', handleCommentUpdated);
+    socket.on('comment_deleted', handleCommentDeleted);
 
     return () => {
       socket.off('new_post', handleNewPost);
@@ -68,8 +83,13 @@ export function AppLayout() {
       socket.off('new_notification', handleNewNotification);
       socket.off('new_mention', handleNewMention);
       socket.off('new_message', handleNewMessage);
+      socket.off('reaction_updated', handleReactionUpdated);
+      socket.off('post_updated', handlePostUpdated);
+      socket.off('post_deleted', handlePostDeleted);
+      socket.off('comment_updated', handleCommentUpdated);
+      socket.off('comment_deleted', handleCommentDeleted);
     };
-  }, [token, ingestRealtimePost, ingestRealtimeComment, ingestRealtimeNotification, ingestRealtimeMessage]);
+  }, [token, ingestRealtimePost, ingestRealtimeComment, ingestRealtimeNotification, ingestRealtimeMessage, ingestRealtimePostUpdate, ingestRealtimePostDeletion, ingestRealtimeCommentUpdate, ingestRealtimeCommentDeletion, applyReactionSummary]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-3 py-4 sm:px-4 lg:flex-row lg:px-6 lg:py-6">

@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Heart, MessageSquare, Clock3 } from 'lucide-react';
+import { MessageSquare, Clock3, Pencil, Trash2 } from 'lucide-react';
 import { Card } from './Card.jsx';
-import { Avatar } from './Avatar.jsx';
 import { Button } from './Button.jsx';
 import { CommentComposer } from './CommentComposer.jsx';
+import { InlineEditor } from './InlineEditor.jsx';
 import { MentionText } from './MentionText.jsx';
+import { ReactionBar } from './ReactionBar.jsx';
+import { Avatar } from './Avatar.jsx';
 
 function formatTime(value) {
   return new Intl.DateTimeFormat('en', {
@@ -15,8 +17,21 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
-export function PostCard({ post, user, onLike, onComment, activeMembers = [] }) {
+export function PostCard({
+  post,
+  user,
+  onComment,
+  onReact,
+  onUpdatePost,
+  onDeletePost,
+  onUpdateComment,
+  onDeleteComment,
+  activeMembers = [],
+  canModerate = false,
+}) {
   const [submitting, setSubmitting] = useState(false);
+  const [editingPost, setEditingPost] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState(null);
 
   async function handleComment(content) {
     setSubmitting(true);
@@ -43,11 +58,35 @@ export function PostCard({ post, user, onLike, onComment, activeMembers = [] }) 
           <div className="mt-1 flex items-center gap-2 text-xs text-[rgb(var(--muted))]">
             <Clock3 size={14} />
             <span>{formatTime(post.created_at)}</span>
+            {post.isEdited ? <span className="rounded-full bg-[rgb(var(--bg-soft))] px-2 py-1 font-semibold">edited</span> : null}
           </div>
         </div>
+        {(post.author?.id === user?.id || canModerate) ? (
+          <div className="flex gap-2">
+            <Button variant="ghost" className="h-10 w-10 rounded-full p-0" onClick={() => setEditingPost((current) => !current)}>
+              <Pencil size={15} />
+            </Button>
+            <Button variant="ghost" className="h-10 w-10 rounded-full p-0" onClick={() => onDeletePost(post.id)}>
+              <Trash2 size={15} />
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      <p className="whitespace-pre-wrap text-[15px] leading-7 text-[rgb(var(--text))]">{post.content}</p>
+      {editingPost ? (
+        <InlineEditor
+          initialValue={post.content}
+          onSave={async (content) => {
+            await onUpdatePost(post.id, content);
+            setEditingPost(false);
+          }}
+          onCancel={() => setEditingPost(false)}
+          submitting={submitting}
+          placeholder="Update your progress"
+        />
+      ) : (
+        <p className="whitespace-pre-wrap text-[15px] leading-7 text-[rgb(var(--text))]">{post.content}</p>
+      )}
 
       {post.image_url ? (
         <img
@@ -58,26 +97,53 @@ export function PostCard({ post, user, onLike, onComment, activeMembers = [] }) 
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Button variant={post.likedByMe ? 'primary' : 'secondary'} onClick={() => onLike(post.id)}>
-          <Heart size={16} className={post.likedByMe ? 'fill-current' : ''} />
-          {post.likesCount}
-        </Button>
         <div className="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-2.5 text-sm font-semibold">
           <MessageSquare size={16} />
           {post.commentsCount}
         </div>
       </div>
 
+      <ReactionBar reactions={post.reactions} onReact={(type) => onReact('post', post.id, type)} />
+
       <div className="mt-5 space-y-3">
         {post.comments.map((item) => (
           <div key={item.id} className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-3">
             <div className="mb-1 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold">{item.author?.name}</p>
-              <span className="text-xs text-[rgb(var(--muted))]">{formatTime(item.created_at)}</span>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">{item.author?.name}</p>
+                {item.isEdited ? <span className="text-[11px] font-semibold text-[rgb(var(--muted))]">edited</span> : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[rgb(var(--muted))]">{formatTime(item.created_at)}</span>
+                {(item.author?.id === user?.id || canModerate) ? (
+                  <>
+                    <Button variant="ghost" className="h-8 w-8 rounded-full p-0" onClick={() => setEditingCommentId(item.id)}>
+                      <Pencil size={13} />
+                    </Button>
+                    <Button variant="ghost" className="h-8 w-8 rounded-full p-0" onClick={() => onDeleteComment(item.id)}>
+                      <Trash2 size={13} />
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             </div>
-            <p className="text-sm leading-6 text-[rgb(var(--text))]">
-              <MentionText content={item.content} mentions={item.mentionedUsers} />
-            </p>
+            {editingCommentId === item.id ? (
+              <InlineEditor
+                initialValue={item.content}
+                onSave={async (content) => {
+                  await onUpdateComment(item.id, content);
+                  setEditingCommentId(null);
+                }}
+                onCancel={() => setEditingCommentId(null)}
+                submitting={submitting}
+                placeholder="Update your comment"
+              />
+            ) : (
+              <p className="text-sm leading-6 text-[rgb(var(--text))]">
+                <MentionText content={item.content} mentions={item.mentionedUsers} />
+              </p>
+            )}
+            <ReactionBar compact reactions={item.reactions} onReact={(type) => onReact('comment', item.id, type)} />
           </div>
         ))}
       </div>

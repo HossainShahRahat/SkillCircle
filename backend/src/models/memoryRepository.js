@@ -7,6 +7,7 @@ import {
   demoMessages,
   demoNotifications,
   demoPosts,
+  demoReactions,
   demoUsers,
 } from '../services/seedData.js';
 import { buildMentionPayload } from '../services/mentionService.js';
@@ -17,17 +18,37 @@ function publicUser(user) {
   return rest;
 }
 
-function enrichPost(post, users, circles, comments, likes, currentUserId) {
+function summarizeReactions(reactions, currentUserId, referenceType, referenceId) {
+  const targetReactions = reactions.filter(
+    (reaction) => reaction.reference_type === referenceType && reaction.reference_id === referenceId,
+  );
+  const counts = targetReactions.reduce((accumulator, reaction) => {
+    accumulator[reaction.type] = (accumulator[reaction.type] || 0) + 1;
+    return accumulator;
+  }, {});
+
+  return {
+    counts,
+    total: targetReactions.length,
+    myReaction: currentUserId
+      ? targetReactions.find((reaction) => reaction.user_id === currentUserId)?.type || null
+      : null,
+  };
+}
+
+function enrichPost(post, users, circles, comments, likes, reactions, currentUserId) {
   const author = publicUser(users.find((user) => user.id === post.user_id));
   const circle = circles.find((item) => item.id === post.circle_id) || null;
   const postComments = comments
-    .filter((comment) => comment.post_id === post.id)
+    .filter((comment) => comment.post_id === post.id && !comment.deleted_at)
     .map((comment) => ({
       ...comment,
       author: publicUser(users.find((user) => user.id === comment.user_id)),
       mentionedUsers: buildMentionPayload(
         users.filter((user) => (comment.mentioned_users || []).includes(user.id)),
       ),
+      reactions: summarizeReactions(reactions, currentUserId, 'comment', comment.id),
+      isEdited: comment.updated_at && comment.updated_at !== comment.created_at,
     }))
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const postLikes = likes.filter((like) => like.post_id === post.id);
@@ -40,6 +61,8 @@ function enrichPost(post, users, circles, comments, likes, currentUserId) {
     commentsCount: postComments.length,
     likesCount: postLikes.length,
     likedByMe: currentUserId ? postLikes.some((like) => like.user_id === currentUserId) : false,
+    reactions: summarizeReactions(reactions, currentUserId, 'post', post.id),
+    isEdited: post.updated_at && post.updated_at !== post.created_at,
   };
 }
 
@@ -87,6 +110,10 @@ function serializeCircleMember(member, users) {
   };
 }
 
+function roleRank(role) {
+  return { member: 1, moderator: 2, admin: 3 }[role] || 0;
+}
+
 function profileStats(userId, posts, likes, circleMembers) {
   const userPosts = posts.filter((post) => post.user_id === userId);
   return {
@@ -110,6 +137,7 @@ export function createMemoryRepository() {
   const likes = structuredClone(demoLikes);
   const messages = structuredClone(demoMessages);
   const notifications = structuredClone(demoNotifications);
+  const reactions = structuredClone(demoReactions);
   const circles = structuredClone(demoCircles);
   const circleMembers = structuredClone(demoCircleMembers);
 
@@ -160,25 +188,32 @@ export function createMemoryRepository() {
 
       return posts
         .filter((post) => (circleId ? post.circle_id === circleId : true))
+        .filter((post) => !post.deleted_at)
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .map((post) => enrichPost(post, users, circles, comments, likes, currentUserId));
+        .map((post) => enrichPost(post, users, circles, comments, likes, reactions, currentUserId));
     },
-    async createPost({ userId, content, imageUrl, circleId }) {
+    async createPost({ userId, content, imageUrl, circleId, scheduledFor = null }) {
       const post = {
         id: `p_${nanoid(10)}`,
         user_id: userId,
         circle_id: circleId || null,
         content,
         image_url: imageUrl || '',
+        scheduled_for: scheduledFor,
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
         created_at: new Date().toISOString(),
       };
       posts.unshift(post);
-      return enrichPost(post, users, circles, comments, likes, userId);
+      return enrichPost(post, users, circles, comments, likes, reactions, userId);
     },
     async getPostById(postId, currentUserId) {
-      const post = posts.find((item) => item.id === postId);
+      const post = posts.find((item) => item.id === postId && !item.deleted_at);
       if (!post) return null;
-      return enrichPost(post, users, circles, comments, likes, currentUserId);
+      return enrichPost(post, users, circles, comments, likes, reactions, currentUserId);
+    },
+    async getCommentById(commentId) {
+      return comments.find((item) => item.id === commentId && !item.deleted_at) || null;
     },
     async listCircleMembers(circleId, userId) {
       const circle = circles.find((item) => item.id === circleId);
@@ -192,6 +227,40 @@ export function createMemoryRepository() {
         .filter((member) => member.circle_id === circleId)
         .map((member) => serializeCircleMember(member, users))
         .filter(Boolean);
+    },
+    async getCircleRole(circleId, userId) {
+      return getMembership(circleMembers, circleId, userId)?.role || null;
+    },
+    async updateCircleMemberRole(circleId, targetUserId, role, actingUserId) {
+      const actingRole = getMembership(circleMembers, circleId, actingUserId)?.role;
+      if (actingRole !== 'admin') {
+        const error = new Error('Only admins can manage member roles.');
+        error.status = 403;
+        throw error;
+      }
+
+      const targetMembership = getMembership(circleMembers, circleId, targetUserId);
+      if (!targetMembership) {
+        const error = new Error('Member not found.');
+        error.status = 404;
+        throw error;
+      }
+      if (targetUserId === actingUserId) {
+        const error = new Error('Admins cannot change their own role.');
+        error.status = 400;
+        throw error;
+      }
+      if (roleRank(targetMembership.role) === roleRank('admin') && role !== 'admin') {
+        const admins = circleMembers.filter((member) => member.circle_id === circleId && member.role === 'admin');
+        if (admins.length === 1) {
+          const error = new Error('Each circle must keep at least one admin.');
+          error.status = 400;
+          throw error;
+        }
+      }
+
+      targetMembership.role = role;
+      return serializeCircleMember(targetMembership, users);
     },
     async toggleLike(postId, userId) {
       const post = posts.find((item) => item.id === postId);
@@ -220,6 +289,8 @@ export function createMemoryRepository() {
         post_id: postId,
         content,
         mentioned_users: mentionedUserIds,
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
         created_at: new Date().toISOString(),
       };
       comments.push(comment);
@@ -229,8 +300,32 @@ export function createMemoryRepository() {
         mentionedUsers: buildMentionPayload(
           users.filter((user) => mentionedUserIds.includes(user.id)),
         ),
+        reactions: summarizeReactions(reactions, userId, 'comment', comment.id),
         notificationTargetUserId: post && post.user_id !== userId ? post.user_id : null,
       };
+    },
+    async toggleReaction({ userId, referenceType, referenceId, reactionType }) {
+      const existing = reactions.find(
+        (reaction) => reaction.user_id === userId
+          && reaction.reference_type === referenceType
+          && reaction.reference_id === referenceId,
+      );
+      if (existing && existing.type === reactionType) {
+        reactions.splice(reactions.indexOf(existing), 1);
+      } else if (existing) {
+        existing.type = reactionType;
+      } else {
+        reactions.push({
+          id: `r_${nanoid(10)}`,
+          user_id: userId,
+          reference_type: referenceType,
+          reference_id: referenceId,
+          type: reactionType,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      return summarizeReactions(reactions, userId, referenceType, referenceId);
     },
     async listCircles(userId) {
       return circles.map((circle) => serializeCircle(circle, circleMembers, userId));
@@ -349,6 +444,27 @@ export function createMemoryRepository() {
           : [],
       };
     },
+    async searchCircle(circleId, query, userId) {
+      const circle = circles.find((item) => item.id === circleId);
+      if (!circle) return { posts: [], members: [] };
+      const normalizedQuery = query.toLowerCase();
+      const isMember = Boolean(getMembership(circleMembers, circleId, userId));
+      if (circle.is_private && !isMember) {
+        return { posts: [], members: [] };
+      }
+
+      return {
+        posts: posts
+          .filter((post) => post.circle_id === circleId && !post.deleted_at)
+          .filter((post) => post.content.toLowerCase().includes(normalizedQuery))
+          .map((post) => enrichPost(post, users, circles, comments, likes, reactions, userId)),
+        members: circleMembers
+          .filter((member) => member.circle_id === circleId)
+          .map((member) => serializeCircleMember(member, users))
+          .filter(Boolean)
+          .filter((member) => member.name.toLowerCase().includes(normalizedQuery)),
+      };
+    },
     async createNotification({ userId, type, referenceId, triggeredBy }) {
       if (!userId || userId === triggeredBy) return null;
       const notification = {
@@ -431,6 +547,43 @@ export function createMemoryRepository() {
       };
       messages.push(message);
       return serializeMessage(message, users);
+    },
+    async updatePost(postId, userId, content) {
+      const post = posts.find((item) => item.id === postId && !item.deleted_at);
+      if (!post) return null;
+      post.content = content;
+      post.updated_at = new Date().toISOString();
+      return enrichPost(post, users, circles, comments, likes, reactions, userId);
+    },
+    async softDeletePost(postId) {
+      const post = posts.find((item) => item.id === postId && !item.deleted_at);
+      if (!post) return null;
+      post.deleted_at = new Date().toISOString();
+      return { id: postId, circle_id: post.circle_id };
+    },
+    async updateComment(commentId, userId, content, mentionedUserIds = []) {
+      const comment = comments.find((item) => item.id === commentId && !item.deleted_at);
+      if (!comment) return null;
+      comment.content = content;
+      comment.mentioned_users = mentionedUserIds;
+      comment.updated_at = new Date().toISOString();
+      return {
+        ...comment,
+        author: publicUser(users.find((user) => user.id === comment.user_id)),
+        mentionedUsers: buildMentionPayload(users.filter((user) => mentionedUserIds.includes(user.id))),
+        reactions: summarizeReactions(reactions, userId, 'comment', comment.id),
+        isEdited: true,
+      };
+    },
+    async softDeleteComment(commentId) {
+      const comment = comments.find((item) => item.id === commentId && !item.deleted_at);
+      if (!comment) return null;
+      comment.deleted_at = new Date().toISOString();
+      return { id: commentId, post_id: comment.post_id };
+    },
+    canModerateCircleContent(circleId, userId) {
+      const role = getMembership(circleMembers, circleId, userId)?.role;
+      return ['admin', 'moderator'].includes(role);
     },
   };
 }

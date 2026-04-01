@@ -15,6 +15,8 @@ export const useAppStore = create((set, get) => ({
   notificationsLoading: false,
   searchResults: { users: [], circles: [] },
   searchLoading: false,
+  circleSearchResults: { posts: [], members: [] },
+  circleSearchLoading: false,
   messages: [],
   messagesLoading: false,
   async loadFeed(circleId = null) {
@@ -83,6 +85,11 @@ export const useAppStore = create((set, get) => ({
         : post,
     );
     set({ posts });
+  },
+  async toggleReaction(referenceType, referenceId, reactionType) {
+    const data = await api.post('/reactions', { referenceType, referenceId, reactionType });
+    get().applyReactionSummary(referenceType, referenceId, data.reactions);
+    return data.reactions;
   },
   async createCircle(payload) {
     set({ submitting: true });
@@ -201,6 +208,22 @@ export const useAppStore = create((set, get) => ({
   clearSearch() {
     set({ searchResults: { users: [], circles: [] }, searchLoading: false });
   },
+  async searchCircle(circleId, keyword) {
+    if (!keyword.trim()) {
+      set({ circleSearchResults: { posts: [], members: [] }, circleSearchLoading: false });
+      return;
+    }
+    set({ circleSearchLoading: true });
+    try {
+      const data = await api.get(`/circles/${circleId}/search?q=${encodeURIComponent(keyword)}`);
+      set({ circleSearchResults: data, circleSearchLoading: false });
+    } catch (error) {
+      set({ circleSearchLoading: false, error: error.message });
+    }
+  },
+  clearCircleSearch() {
+    set({ circleSearchResults: { posts: [], members: [] }, circleSearchLoading: false });
+  },
   async loadMessages(circleId) {
     set({ messagesLoading: true });
     try {
@@ -236,6 +259,101 @@ export const useAppStore = create((set, get) => ({
         };
       }),
     });
+  },
+  ingestRealtimePostUpdate(post) {
+    set({
+      posts: get().posts.map((item) => (item.id === post.id ? post : item)),
+    });
+  },
+  ingestRealtimePostDeletion(postId) {
+    set({ posts: get().posts.filter((item) => item.id !== postId) });
+  },
+  ingestRealtimeCommentUpdate(postId, comment) {
+    set({
+      posts: get().posts.map((post) => (
+        post.id === postId
+          ? {
+              ...post,
+              comments: post.comments.map((item) => (item.id === comment.id ? comment : item)),
+            }
+          : post
+      )),
+    });
+  },
+  ingestRealtimeCommentDeletion(postId, commentId) {
+    set({
+      posts: get().posts.map((post) => (
+        post.id === postId
+          ? {
+              ...post,
+              comments: post.comments.filter((item) => item.id !== commentId),
+              commentsCount: Math.max(0, post.commentsCount - 1),
+            }
+          : post
+      )),
+    });
+  },
+  applyReactionSummary(referenceType, referenceId, reactions) {
+    set({
+      posts: get().posts.map((post) => {
+        if (referenceType === 'post' && post.id === referenceId) {
+          return { ...post, reactions };
+        }
+        if (referenceType === 'comment') {
+          return {
+            ...post,
+            comments: post.comments.map((comment) => (
+              comment.id === referenceId ? { ...comment, reactions } : comment
+            )),
+          };
+        }
+        return post;
+      }),
+    });
+  },
+  async updatePost(postId, content) {
+    const data = await api.patch(`/posts/${postId}`, { content });
+    get().ingestRealtimePostUpdate(data.post);
+    get().showToast('Post updated.');
+    return data.post;
+  },
+  async deletePost(postId) {
+    await api.delete(`/posts/${postId}`);
+    get().ingestRealtimePostDeletion(postId);
+    get().showToast('Post deleted.');
+  },
+  async updateComment(commentId, content) {
+    const data = await api.patch(`/posts/comments/${commentId}`, { content });
+    get().posts.forEach((post) => {
+      if (post.comments.some((comment) => comment.id === commentId)) {
+        get().ingestRealtimeCommentUpdate(post.id, data.comment);
+      }
+    });
+    get().showToast('Comment updated.');
+    return data.comment;
+  },
+  async deleteComment(commentId) {
+    const owningPost = get().posts.find((post) => post.comments.some((comment) => comment.id === commentId));
+    await api.delete(`/posts/comments/${commentId}`);
+    if (owningPost) {
+      get().ingestRealtimeCommentDeletion(owningPost.id, commentId);
+    }
+    get().showToast('Comment deleted.');
+  },
+  async updateCircleMemberRole(circleId, userId, role) {
+    const data = await api.patch(`/circles/${circleId}/members/${userId}/role`, { role });
+    set({
+      activeCircle: get().activeCircle
+        ? {
+            ...get().activeCircle,
+            members: (get().activeCircle.members || []).map((member) => (
+              member.id === userId ? { ...member, ...data.member } : member
+            )),
+          }
+        : get().activeCircle,
+    });
+    get().showToast('Member role updated.');
+    return data.member;
   },
   ingestRealtimeNotification(notification) {
     if (!notification) return;
