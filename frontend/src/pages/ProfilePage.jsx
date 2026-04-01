@@ -14,6 +14,8 @@ import { fileToDataUrl } from '../utils/uploads.js';
 export function ProfilePage() {
   const { userId } = useParams();
   const authUser = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
+  const initializing = useAuthStore((state) => state.initializing);
   const setUser = useAuthStore((state) => state.setUser);
   const posts = useAppStore((state) => state.posts);
   const [profileUser, setProfileUser] = useState(authUser);
@@ -33,6 +35,9 @@ export function ProfilePage() {
   const isOwnProfile = !userId || userId === authUser?.id;
 
   useEffect(() => {
+    if (initializing) return undefined;
+    if (isOwnProfile && !token) return undefined;
+
     async function loadProfile() {
       setLoading(true);
       const endpoint = isOwnProfile ? '/profile' : `/profile/${userId}`;
@@ -46,13 +51,16 @@ export function ProfilePage() {
           avatar_url: data.user?.avatar_url || '',
           skills: (data.user?.skills || []).join(', '),
         });
+      } catch (_error) {
+        setProfileUser(authUser);
       } finally {
         setLoading(false);
       }
     }
 
     loadProfile();
-  }, [isOwnProfile, userId]);
+    return undefined;
+  }, [authUser, initializing, isOwnProfile, token, userId]);
 
   const myPosts = useMemo(
     () => posts.filter((post) => post.author?.id === profileUser?.id).slice(0, 3),

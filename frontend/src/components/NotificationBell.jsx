@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore.js';
 import { useAppStore } from '../store/appStore.js';
 import { Button } from './Button.jsx';
 
@@ -14,6 +15,7 @@ function notificationMessage(notification) {
 
 export function NotificationBell() {
   const navigate = useNavigate();
+  const token = useAuthStore((state) => state.token);
   const notifications = useAppStore((state) => state.notifications);
   const notificationsLoading = useAppStore((state) => state.notificationsLoading);
   const loadNotifications = useAppStore((state) => state.loadNotifications);
@@ -21,8 +23,9 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (!token) return;
     loadNotifications();
-  }, [loadNotifications]);
+  }, [loadNotifications, token]);
 
   const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
@@ -33,7 +36,9 @@ export function NotificationBell() {
         className="relative h-11 w-11 rounded-full border bg-[rgb(var(--bg-elevated))] p-0"
         onClick={() => {
           if (!open) {
-            loadNotifications();
+            if (token) {
+              loadNotifications();
+            }
           }
           setOpen((current) => !current);
         }}

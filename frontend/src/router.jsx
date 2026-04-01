@@ -18,11 +18,19 @@ import { useAuthStore } from './store/authStore.js';
 
 function ProtectedRoute() {
   const token = useAuthStore((state) => state.token);
+  const initializing = useAuthStore((state) => state.initializing);
+  if (initializing) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Loading SkillCircle...</div>;
+  }
   return token ? <Outlet /> : <Navigate to="/auth" replace />;
 }
 
 function PublicRoute() {
   const token = useAuthStore((state) => state.token);
+  const initializing = useAuthStore((state) => state.initializing);
+  if (initializing) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Loading SkillCircle...</div>;
+  }
   return token ? <Navigate to="/" replace /> : <AuthPage />;
 }
 

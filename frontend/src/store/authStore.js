@@ -8,6 +8,7 @@ const userKey = 'skillcircle-user';
 export const useAuthStore = create((set) => ({
   token: localStorage.getItem(tokenKey),
   user: JSON.parse(localStorage.getItem(userKey) || 'null'),
+  initializing: Boolean(localStorage.getItem(tokenKey)),
   loading: false,
   error: '',
   async authenticate(mode, payload) {
@@ -17,7 +18,7 @@ export const useAuthStore = create((set) => ({
       const data = await api.post(endpoint, payload);
       localStorage.setItem(tokenKey, data.token);
       localStorage.setItem(userKey, JSON.stringify(data.user));
-      set({ token: data.token, user: data.user, loading: false });
+      set({ token: data.token, user: data.user, loading: false, initializing: false });
       return data.user;
     } catch (error) {
       set({ error: error.message, loading: false });
@@ -25,15 +26,18 @@ export const useAuthStore = create((set) => ({
     }
   },
   async refreshUser() {
-    if (!localStorage.getItem(tokenKey)) return;
+    if (!localStorage.getItem(tokenKey)) {
+      set({ initializing: false });
+      return;
+    }
     try {
       const data = await api.get('/auth/me');
       localStorage.setItem(userKey, JSON.stringify(data.user));
-      set({ user: data.user });
+      set({ user: data.user, initializing: false });
     } catch (_error) {
       localStorage.removeItem(tokenKey);
       localStorage.removeItem(userKey);
-      set({ token: null, user: null });
+      set({ token: null, user: null, initializing: false });
     }
   },
   setUser(user) {
@@ -44,6 +48,6 @@ export const useAuthStore = create((set) => ({
     disconnectSocket();
     localStorage.removeItem(tokenKey);
     localStorage.removeItem(userKey);
-    set({ token: null, user: null, error: '' });
+    set({ token: null, user: null, error: '', initializing: false });
   },
 }));
