@@ -99,6 +99,7 @@ export function AuthPage() {
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               {mode === 'signup' ? (
                 <Input
+                  name="name"
                   label="Name"
                   placeholder="Rina Ahmed"
                   value={form.name}
@@ -106,12 +107,17 @@ export function AuthPage() {
                 />
               ) : null}
               <Input
+                name="email"
+                type="email"
+                autoComplete="email"
                 label="Email"
                 placeholder="maya@skillcircle.dev"
                 value={form.email}
                 onChange={(event) => setForm({ ...form, email: event.target.value })}
               />
               <Input
+                name="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 label="Password"
                 type="password"
                 placeholder="password123"

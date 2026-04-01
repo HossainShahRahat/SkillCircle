@@ -6,12 +6,14 @@ import { useAuthStore } from '../store/authStore.js';
 import { useAppStore } from '../store/appStore.js';
 import { getSocket } from '../services/socket.js';
 
+const EMPTY_MESSAGES = [];
+
 export function DirectMessagesPage() {
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
   const directChats = useAppStore((state) => state.directChats);
   const activeDirectChatId = useAppStore((state) => state.activeDirectChatId);
-  const directMessages = useAppStore((state) => state.directMessagesByChat[activeDirectChatId] || []);
+  const directMessages = useAppStore((state) => state.directMessagesByChat[activeDirectChatId] ?? EMPTY_MESSAGES);
   const typingState = useAppStore((state) => state.typingState);
   const loadDirectChats = useAppStore((state) => state.loadDirectChats);
   const createDirectChat = useAppStore((state) => state.createDirectChat);
@@ -71,6 +73,9 @@ export function DirectMessagesPage() {
       <div className="min-h-[320px]">
         <div className="border-b px-5 py-4">
           <input
+            id="direct-user-search"
+            name="direct_user_search"
+            type="search"
             value={userSearch}
             onChange={(event) => setUserSearch(event.target.value)}
             placeholder="Search people to start a chat"

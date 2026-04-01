@@ -58,8 +58,15 @@ export function ChatWindow({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="border-b px-5 py-4">
-        <h2 className="text-lg font-bold">{title}</h2>
-        <p className="muted-copy">{subtitle}</p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold">{title}</h2>
+            <p className="muted-copy">{subtitle}</p>
+          </div>
+          <div className="rounded-full bg-[rgb(var(--bg-soft))] px-3 py-2 text-xs font-semibold text-[rgb(var(--muted))]">
+            {typingUsers?.length ? 'Live now' : 'Active chat'}
+          </div>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">

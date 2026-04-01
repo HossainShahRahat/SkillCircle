@@ -1,9 +1,11 @@
-import { BarChart3, Circle, Compass, MessageSquareText, Settings2, UserRound } from 'lucide-react';
+import { BarChart3, Bell, Circle, Compass, MessageSquareText, Settings2, Users, UserRound } from 'lucide-react';
 
 export const navigation = [
-  { label: 'Dashboard', path: '/', icon: Compass },
+  { label: 'Home', path: '/', icon: Compass },
+  { label: 'Circles', path: '/circles', icon: Users },
+  { label: 'Inbox', path: '/messages', icon: MessageSquareText },
+  { label: 'Alerts', path: '/notifications', icon: Bell },
   { label: 'Profile', path: '/profile', icon: UserRound },
-  { label: 'Messages', path: '/messages', icon: MessageSquareText },
   { label: 'Insights', path: '/insights', icon: BarChart3 },
   { label: 'Settings', path: '/settings', icon: Settings2 },
 ];

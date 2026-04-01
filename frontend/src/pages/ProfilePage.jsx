@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Save } from 'lucide-react';
+import { Flame, ImageUp, Save, Users } from 'lucide-react';
 import { Card } from '../components/Card.jsx';
 import { Input } from '../components/Input.jsx';
 import { Textarea } from '../components/Textarea.jsx';
@@ -9,6 +9,15 @@ import { Button } from '../components/Button.jsx';
 import { useAuthStore } from '../store/authStore.js';
 import { api } from '../services/api.js';
 import { useAppStore } from '../store/appStore.js';
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Unable to read avatar file.'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export function ProfilePage() {
   const { userId } = useParams();
@@ -24,7 +33,9 @@ export function ProfilePage() {
     skills: (authUser?.skills || []).join(', '),
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [message, setMessage] = useState('');
+  const [uploadMessage, setUploadMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const isOwnProfile = !userId || userId === authUser?.id;
@@ -73,6 +84,35 @@ export function ProfilePage() {
     }
   }
 
+  async function handleAvatarUpload(event) {
+    const [file] = Array.from(event.target.files || []);
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    setUploadMessage('');
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const data = await api.post('/media/upload', {
+        fileName: file.name,
+        contentType: file.type,
+        size: file.size,
+        dataUrl,
+      });
+
+      setForm((current) => ({
+        ...current,
+        avatar_url: data.media?.url || '',
+      }));
+      setUploadMessage('Avatar uploaded. Save profile to keep it.');
+    } catch (error) {
+      setUploadMessage(error.message || 'Unable to upload avatar.');
+    } finally {
+      setUploadingAvatar(false);
+      event.target.value = '';
+    }
+  }
+
   return (
     <div className="space-y-5">
       <Card className="p-6 md:p-8">
@@ -102,35 +142,80 @@ export function ProfilePage() {
                 </div>
               ))}
             </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-[rgb(var(--bg-elevated))] p-4">
+                <div className="flex items-center gap-2 text-[rgb(var(--accent))]">
+                  <Flame size={16} />
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">Consistency</span>
+                </div>
+                <p className="mt-2 font-semibold">Show up daily, even with a tiny win.</p>
+              </div>
+              <div className="rounded-2xl bg-[rgb(var(--bg-elevated))] p-4">
+                <div className="flex items-center gap-2 text-[rgb(var(--accent))]">
+                  <Users size={16} />
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">Active circles</span>
+                </div>
+                <p className="mt-2 font-semibold">{stats.circlesJoined || 0} circles shaping your current momentum.</p>
+              </div>
+            </div>
           </div>
 
           {isOwnProfile ? (
             <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
+                name="profile_name"
                 label="Name"
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
               />
-              <Input
-                label="Avatar URL"
-                value={form.avatar_url}
-                onChange={(event) => setForm({ ...form, avatar_url: event.target.value })}
-              />
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-[rgb(var(--text))]">Avatar image</span>
+                <label
+                  htmlFor="avatar-upload"
+                  className="flex min-h-[52px] cursor-pointer items-center justify-between rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3 text-sm text-[rgb(var(--text))] transition hover:bg-[rgb(var(--bg-soft))]"
+                >
+                  <span className="truncate">
+                    {uploadingAvatar ? 'Uploading avatar...' : 'Choose an image to upload'}
+                  </span>
+                  <span className="inline-flex items-center gap-2 font-semibold text-[rgb(var(--muted))]">
+                    <ImageUp size={16} />
+                    Browse
+                  </span>
+                </label>
+                <input
+                  id="avatar-upload"
+                  name="avatar_upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+                <p className="text-sm text-[rgb(var(--muted))]">
+                  JPG, PNG, GIF, or WebP. Upload first, then save your profile.
+                </p>
+              </label>
             </div>
             <Textarea
+              name="profile_bio"
               label="Bio"
               value={form.bio}
               onChange={(event) => setForm({ ...form, bio: event.target.value })}
             />
             <Input
+              name="profile_skills"
               label="Skills"
               placeholder="React, UI Design, TypeScript"
               value={form.skills}
               onChange={(event) => setForm({ ...form, skills: event.target.value })}
             />
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
+              <div>
+                <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
+                <p className={`text-sm ${uploadMessage && uploadMessage.toLowerCase().includes('unable') ? 'text-rose-500' : 'text-[rgb(var(--muted))]'}`}>
+                  {uploadMessage}
+                </p>
+              </div>
               <Button disabled={saving}>
                 <Save size={16} />
                 {saving ? 'Saving...' : 'Save profile'}

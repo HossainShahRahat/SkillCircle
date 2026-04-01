@@ -193,6 +193,9 @@ export function CirclePage() {
             <div className="flex items-center gap-3 rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3">
               <Search size={16} className="text-[rgb(var(--muted))]" />
               <input
+                id="circle-search"
+                name="circle_search"
+                type="search"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search posts or members in this circle"

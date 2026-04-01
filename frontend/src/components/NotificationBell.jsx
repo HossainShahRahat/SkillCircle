@@ -89,6 +89,16 @@ export function NotificationBell() {
               No notifications yet.
             </div>
           )}
+          <Button
+            variant="secondary"
+            className="mt-3 w-full"
+            onClick={() => {
+              setOpen(false);
+              navigate('/notifications');
+            }}
+          >
+            Open notifications center
+          </Button>
         </div>
       ) : null}
     </div>

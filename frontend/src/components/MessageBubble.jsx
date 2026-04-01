@@ -38,7 +38,7 @@ export function MessageBubble({
         <div className="group">
           <div
             className={`rounded-[24px] px-4 py-3 shadow-sm ${
-              isOwn ? 'bg-[rgb(var(--text))] text-white dark:bg-white dark:text-slate-900' : 'bg-[rgb(var(--bg-soft))]'
+              isOwn ? 'bg-[rgb(var(--text))] text-white dark:bg-white dark:text-slate-900' : 'border bg-[rgb(var(--bg-soft))]'
             }`}
           >
             {!isOwn ? <p className="mb-1 text-xs font-semibold">{message.author?.name}</p> : null}

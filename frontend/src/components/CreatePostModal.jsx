@@ -22,6 +22,7 @@ export function CreatePostModal({ open, circles, onClose, onSubmit, submitting }
     <Modal open={open} title="Share progress" onClose={onClose}>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Textarea
+          name="post_content"
           label="What moved forward today?"
           maxLength={280}
           placeholder="Day 5 learning React: I finally understood why state belongs higher in the tree when multiple components need to coordinate."
@@ -34,6 +35,7 @@ export function CreatePostModal({ open, circles, onClose, onSubmit, submitting }
           </span>
         </div>
         <Input
+          name="post_image_url"
           label="Optional image URL"
           placeholder="https://images.unsplash.com/..."
           value={image}
@@ -42,6 +44,8 @@ export function CreatePostModal({ open, circles, onClose, onSubmit, submitting }
         <label className="flex flex-col gap-2">
           <span className="text-sm font-semibold">Post to a circle</span>
           <select
+            id="post-circle-id"
+            name="circle_id"
             className="rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3 text-sm"
             value={circleId}
             onChange={(event) => setCircleId(event.target.value)}
@@ -66,4 +70,3 @@ export function CreatePostModal({ open, circles, onClose, onSubmit, submitting }
     </Modal>
   );
 }
-

@@ -34,6 +34,9 @@ export function SearchBar() {
       <div className="flex items-center gap-3 rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3">
         <Search size={16} className="text-[rgb(var(--muted))]" />
         <input
+          id="global-search"
+          name="global_search"
+          type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => {

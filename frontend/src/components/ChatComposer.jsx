@@ -64,6 +64,9 @@ export function ChatComposer({
       <div className="flex items-center gap-3 border-b px-4 py-3 sm:px-5">
         <Search size={16} className="text-[rgb(var(--muted))]" />
         <input
+          id="chat-search"
+          name="chat_search"
+          type="search"
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search this chat"
@@ -92,6 +95,7 @@ export function ChatComposer({
             <Paperclip size={16} />
           </button>
           <Input
+            name="message"
             value={draft}
             onChange={(event) => {
               const value = event.target.value;
@@ -113,6 +117,8 @@ export function ChatComposer({
           </Button>
         </div>
         <input
+          id="chat-attachment"
+          name="attachment"
           ref={fileInputRef}
           type="file"
           className="hidden"

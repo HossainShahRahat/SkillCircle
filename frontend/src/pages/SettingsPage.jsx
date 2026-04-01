@@ -5,6 +5,8 @@ import { Card } from '../components/Card.jsx';
 import { useAppStore } from '../store/appStore.js';
 
 function ToggleRow({ label, description, checked, onChange }) {
+  const fieldName = label.toLowerCase().replace(/\s+/g, '_');
+
   return (
     <label className="flex items-start justify-between gap-4 rounded-[24px] border bg-[rgb(var(--bg-soft))] px-4 py-4">
       <div>
@@ -12,6 +14,8 @@ function ToggleRow({ label, description, checked, onChange }) {
         <p className="mt-1 text-sm text-[rgb(var(--muted))]">{description}</p>
       </div>
       <input
+        id={fieldName}
+        name={fieldName}
         type="checkbox"
         className="mt-1 h-5 w-5 rounded border-[rgb(var(--border))]"
         checked={checked}

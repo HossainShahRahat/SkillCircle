@@ -13,7 +13,7 @@ export function ToastViewport() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="pointer-events-auto surface-card flex items-start gap-3 p-4"
+          className="pointer-events-auto surface-card animate-[toast-in_180ms_ease-out] flex items-start gap-3 p-4"
         >
           <div className="mt-0.5 text-[rgb(var(--success))]">
             {toast.type === 'error' ? <CircleAlert size={18} /> : <CheckCircle2 size={18} />}
@@ -34,4 +34,3 @@ export function ToastViewport() {
     </div>
   );
 }
-

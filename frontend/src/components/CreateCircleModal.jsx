@@ -22,12 +22,14 @@ export function CreateCircleModal({ open, onClose, onSubmit, submitting }) {
     <Modal open={open} title="Create a circle" onClose={() => onClose(null)}>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Input
+          name="circle_name"
           label="Circle name"
           placeholder="Design Systems Lab"
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
         <Textarea
+          name="circle_description"
           label="Description"
           placeholder="A focused place to share experiments, critique interface details, and document systems thinking."
           value={description}
@@ -35,6 +37,8 @@ export function CreateCircleModal({ open, onClose, onSubmit, submitting }) {
         />
         <label className="flex items-start gap-3 rounded-2xl border bg-[rgb(var(--bg-soft))] px-4 py-4">
           <input
+            id="circle-is-private"
+            name="is_private"
             type="checkbox"
             className="mt-1 h-4 w-4 rounded border"
             checked={isPrivate}

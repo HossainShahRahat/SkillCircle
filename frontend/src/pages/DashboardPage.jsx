@@ -1,16 +1,22 @@
-import { useEffect } from 'react';
-import { BellRing, Flame, RefreshCw, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { BellRing, Flame, RefreshCw, Sparkles, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
+import { EmptyState } from '../components/EmptyState.jsx';
+import { InlinePostComposer } from '../components/InlinePostComposer.jsx';
+import { OnboardingChecklist } from '../components/OnboardingChecklist.jsx';
 import { PostCard } from '../components/PostCard.jsx';
 import { useAppStore } from '../store/appStore.js';
 import { useAuthStore } from '../store/authStore.js';
 import { StreakBadge } from '../components/StreakBadge.jsx';
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const posts = useAppStore((state) => state.posts);
   const dashboard = useAppStore((state) => state.dashboard);
+  const circles = useAppStore((state) => state.circles);
   const loadDashboard = useAppStore((state) => state.loadDashboard);
   const loadingDashboard = useAppStore((state) => state.loadingDashboard);
   const commentOnPost = useAppStore((state) => state.commentOnPost);
@@ -20,10 +26,23 @@ export function DashboardPage() {
   const updateComment = useAppStore((state) => state.updateComment);
   const deleteComment = useAppStore((state) => state.deleteComment);
   const setModalOpen = useAppStore((state) => state.setModalOpen);
+  const createPost = useAppStore((state) => state.createPost);
+  const submitting = useAppStore((state) => state.submitting);
+  const [feedMode, setFeedMode] = useState('my_circles');
 
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  const joinedCircleIds = useMemo(
+    () => new Set(circles.filter((circle) => circle.joined).map((circle) => circle.id)),
+    [circles],
+  );
+
+  const visiblePosts = useMemo(() => {
+    if (feedMode === 'global') return posts;
+    return posts.filter((post) => !post.circle_id || joinedCircleIds.has(post.circle_id));
+  }, [feedMode, joinedCircleIds, posts]);
 
   return (
     <div className="space-y-5">
@@ -37,6 +56,10 @@ export function DashboardPage() {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button onClick={() => setModalOpen(true)}>Share today&apos;s progress</Button>
+              <Button variant="secondary" onClick={() => navigate('/circles')}>
+                <Users size={16} />
+                Explore circles
+              </Button>
               <Button variant="secondary" onClick={() => loadDashboard()}>
                 <RefreshCw size={16} />
                 Refresh dashboard
@@ -89,14 +112,52 @@ export function DashboardPage() {
         </div>
       </Card>
 
+      <OnboardingChecklist
+        user={user}
+        joinedCirclesCount={circles.filter((circle) => circle.joined).length}
+        postsCount={posts.filter((post) => post.author?.id === user?.id).length}
+        onOpenProfile={() => navigate('/profile')}
+        onOpenCreateCircle={() => navigate('/circles')}
+        onOpenPostComposer={() => setModalOpen(true)}
+      />
+
+      <InlinePostComposer
+        user={user}
+        circles={circles.filter((circle) => circle.joined)}
+        onSubmit={createPost}
+        submitting={submitting}
+        onOpenFullComposer={() => setModalOpen(true)}
+      />
+
       <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
         <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-lg font-bold">Your feed</p>
+              <p className="muted-copy">Switch between the whole network and the circles shaping your momentum.</p>
+            </div>
+            <div className="flex gap-2 rounded-full bg-[rgb(var(--bg-soft))] p-1">
+              {[
+                ['my_circles', 'My circles'],
+                ['global', 'Global'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${feedMode === value ? 'bg-[rgb(var(--bg-elevated))] shadow-soft' : 'text-[rgb(var(--muted))]'}`}
+                  onClick={() => setFeedMode(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           {loadingDashboard ? (
             <Card className="p-8 text-center">
               <p className="font-semibold">Loading your dashboard...</p>
             </Card>
-          ) : posts.length ? (
-            posts.map((post) => (
+          ) : visiblePosts.length ? (
+            visiblePosts.map((post) => (
               <PostCard
                 key={post.id}
                 post={post}
@@ -110,10 +171,18 @@ export function DashboardPage() {
               />
             ))
           ) : (
-            <Card className="p-8 text-center">
-              <p className="text-lg font-semibold">No circle activity yet</p>
-              <p className="mt-2 muted-copy">Join a few circles or publish a fresh update to bring your dashboard to life.</p>
-            </Card>
+            <EmptyState
+              icon={Sparkles}
+              eyebrow="Fresh start"
+              title={feedMode === 'my_circles' ? 'Start your journey inside a circle' : 'Start your journey'}
+              description={feedMode === 'my_circles'
+                ? 'Join or create a circle, then share a small update to make your feed feel personal fast.'
+                : 'Post your first progress update to turn this empty feed into a living learning timeline.'}
+              actionLabel={feedMode === 'my_circles' ? 'Explore circles' : 'Share your first update'}
+              onAction={() => (feedMode === 'my_circles' ? navigate('/circles') : setModalOpen(true))}
+              secondaryLabel={feedMode === 'my_circles' ? 'Share an update' : 'Explore circles'}
+              onSecondaryAction={() => (feedMode === 'my_circles' ? setModalOpen(true) : navigate('/circles'))}
+            />
           )}
         </div>
 

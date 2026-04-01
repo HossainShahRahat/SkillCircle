@@ -1,35 +1,116 @@
 # SkillCircle
 
-SkillCircle is a modern social platform MVP for sharing learning progress, joining focused communities, and keeping momentum visible.
+SkillCircle is a focused social learning platform for people who want to document progress, build consistency, and learn in public without the noise of a general-purpose social network.
 
-It is designed as a focused social product, not a general-purpose network. The experience is built around short progress updates, small learning communities called Skill Circles, and lightweight interactions that reinforce consistency.
+Instead of optimizing for endless posting, SkillCircle is built around short progress updates, small communities called Skill Circles, and lightweight social signals that help users stay accountable over time.
 
-## Stack
+## Live Demo / Preview
 
-- Frontend: React, Vite, Tailwind CSS, Zustand, React Router
-- Backend: Node.js, Express, JWT
-- Database: Supabase PostgreSQL
-- Storage: Cloudflare R2 style upload flow with a simulated local fallback
+- Live app: `https://your-deployed-url-here.com`
+- Local frontend: `http://localhost:5173`
+- Local backend API: `http://localhost:4000/api`
 
-## Product Goals
+### Demo Credentials
 
-- Help users document learning progress in a clean, motivating feed
-- Keep community interaction focused on improvement, not noise
-- Make the MVP easy to run locally and easy to migrate to real hosted services
+- `maya@skillcircle.dev` / `password123`
+- `aarav@skillcircle.dev` / `password123`
 
-## Core Features
+## Why SkillCircle
 
-- Authentication with signup, login, JWT session restore
-- User profile with name, bio, avatar, and skill tags
-- Progress posts with optional image URL and timestamps
-- Global feed ordered by latest activity
-- Likes and comments on posts
-- Skill Circles for community creation, joining, and circle-specific posting
-- Light and dark mode with a consistent product-style UI
-- Real-time feed, comments, notifications, and circle chat with Socket.io
-- Personalized dashboard feed with activity highlights and streak tracking
-- User settings for privacy and notification preferences
-- Insights pages for user and circle-level activity
+SkillCircle sits between a habit tracker, a social feed, and a focused community product. It is designed for learners who want:
+
+- visible progress over time
+- smaller, higher-signal communities
+- real-time interaction without the complexity of a large social platform
+- a local-first developer experience with optional hosted services
+
+## Features
+
+### Core Features
+
+- JWT authentication with signup, login, and session restore
+- personal profiles with name, bio, skills, and uploaded avatar
+- progress posts with timestamps and optional image URL support
+- dashboard feed for recent learning activity
+- settings page for privacy and notification preferences
+
+### Social Features
+
+- likes and comments on posts
+- discoverable user profiles
+- Skill Circles for focused communities
+- join public circles or private circles by invite code
+- circle-specific posting and membership views
+
+### Real-Time Features
+
+- live post updates
+- live comment delivery
+- real-time notifications
+- circle chat with typing indicators and reactions
+- direct messages with live delivery and status updates
+
+### Advanced Features
+
+- user analytics and circle analytics
+- activity highlights and dashboard insights
+- streak-aware product direction and analytics-ready backend structures
+- offline-friendly queued message sync behavior
+- local demo mode with seeded in-memory data
+
+## Tech Stack
+
+### Frontend
+
+- React
+- Vite
+- Tailwind CSS
+- Zustand
+- React Router
+
+### Backend
+
+- Node.js
+- Express
+- JWT authentication
+
+### Database
+
+- Supabase PostgreSQL
+- in-memory repository fallback for local demo mode
+
+### Realtime
+
+- Socket.io
+
+### Storage
+
+- simulated local asset URLs by default
+- optional Cloudinary-backed upload flow
+
+## Architecture Overview
+
+SkillCircle uses a split frontend/backend architecture:
+
+- the React frontend handles routing, UI state, optimistic interactions, and authenticated API access
+- the Express backend exposes REST endpoints for auth, profiles, posts, circles, settings, analytics, messaging, and uploads
+- the backend uses a repository abstraction to switch between Supabase persistence and an in-memory fallback
+- Socket.io delivers real-time updates for posts, comments, notifications, chat messages, reactions, and typing state
+- uploads are routed through the backend so the frontend does not need to talk directly to Cloudinary or any future storage provider
+
+At a high level:
+
+1. the frontend sends HTTP requests to the backend API
+2. the backend reads or writes through the selected repository
+3. the backend emits Socket.io events after real-time actions
+4. connected clients reconcile live updates into local Zustand state
+
+## Tech Decisions
+
+- Repository pattern: keeps the app runnable locally without requiring Supabase
+- Socket.io: simple event-based real-time model for feed, notifications, and chat
+- Zustand: lightweight state management for auth, feed, chat, and analytics
+- Vite: fast local iteration and straightforward frontend build pipeline
 
 ## Project Structure
 
@@ -109,98 +190,87 @@ SkillCircle/
     vite.config.js
 ```
 
-## What Is Implemented
+### Folder Guide
+
+- `backend/src/controllers`: request handlers for HTTP endpoints
+- `backend/src/routes`: route definitions and request wiring
+- `backend/src/models`: repository implementations for memory mode and Supabase mode
+- `backend/src/services`: auth helpers, storage helpers, seeding, and other business services
+- `backend/src/middleware`: auth, validation, rate limiting, and error handling
+- `backend/supabase/schema.sql`: database schema for real Supabase-backed persistence
+- `frontend/src/pages`: route-level screens
+- `frontend/src/components`: reusable UI building blocks and feature widgets
+- `frontend/src/layouts`: shared application shell
+- `frontend/src/store`: Zustand stores for auth and application state
+- `frontend/src/services`: API and socket client integrations
+- `frontend/src/data`: navigation metadata and static app configuration
+
+## Current Implementation Status
+
+The project already includes:
 
 - JWT-based authentication with signup, login, and session restoration
-- Editable user profiles with bio, avatar, and skill tags
-- Progress post creation with optional image URL and circle targeting
-- Global feed and per-circle feed views
-- Likes and comments
-- Circle creation and membership
-- Modern responsive UI with light and dark mode
-- Supabase-ready schema with a local simulated data fallback
+- editable user profiles with bio, uploaded avatar, and skill tags
+- post creation with comments, likes, and reactions
+- circle creation, joining, and per-circle views
+- direct and circle chat flows
+- user and circle analytics endpoints
+- responsive light/dark UI
+- Supabase-ready persistence with a local in-memory fallback
 
-## Backend Notes
+## Setup Guide
 
-- The backend uses a repository abstraction.
-- If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are provided, it uses Supabase tables.
-- If they are not provided, it falls back to an in-memory seeded demo mode so the MVP still runs locally.
-- Image uploads are simulated through generated CDN-style URLs unless you wire a real R2 flow.
+### Prerequisites
 
-## Architecture
+- Node.js 18+
+- npm 9+
 
-### Frontend
+### 1. Install Dependencies
 
-- `pages/` contains route-level screens
-- `components/` contains reusable UI primitives and composed widgets
-- `store/` contains Zustand stores for auth and app state
-- `services/api.js` centralizes HTTP requests to the backend
-- `layouts/AppLayout.jsx` provides the sidebar, main feed shell, and right rail
-
-### Backend
-
-- `controllers/` contains request handlers
-- `routes/` maps HTTP endpoints to controllers
-- `middleware/` holds auth and error handling
-- `models/repository.js` selects the active data source
-- `models/supabaseRepository.js` is the production-ready persistence layer
-- `models/memoryRepository.js` is the local demo fallback
-
-## Environment Variables
-
-### Frontend
-
-- `VITE_API_URL`: backend API base URL
-- `VITE_SOCKET_URL`: backend websocket base URL
-
-### Backend
-
-- `PORT`: Express server port
-- `CLIENT_URL`: frontend origin for CORS
-- `CLIENT_URLS`: comma-separated allowed frontend origins for production deployments
-- `JWT_SECRET`: signing secret for JWT auth
-- `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key
-- `STORAGE_MODE`: `simulated` by default
-- `R2_PUBLIC_BASE_URL`: public base URL for generated asset links
-- `R2_BUCKET_NAME`: Cloudflare R2 bucket name for production image storage
-- `R2_ENDPOINT`: Cloudflare R2 S3-compatible endpoint
-- `R2_ACCESS_KEY_ID`: R2 access key id
-- `R2_SECRET_ACCESS_KEY`: R2 secret access key
-- `BODY_LIMIT`: JSON payload size limit for the API
-- `APP_BASE_URL`: deployed backend base URL
-- `FORCE_HTTPS`: redirect forwarded HTTP traffic to HTTPS in production
-- `NODE_ENV`: runtime mode
-
-## Demo Login
-
-- Email: `maya@skillcircle.dev`
-- Email: `aarav@skillcircle.dev`
-- Password: `password123`
-
-## Setup
-
-1. Install root and workspace dependencies:
+From the project root:
 
 ```bash
 npm install
 ```
 
-2. Create backend env file:
+### 2. Configure the Backend
+
+Create the backend environment file:
 
 ```powershell
 Copy-Item backend/.env.example backend/.env
 ```
 
-3. Create frontend env file:
+For local demo mode, you can leave Supabase values empty. The backend will seed demo users, circles, posts, likes, and comments in memory.
+
+If you want real persistence:
+
+1. run [backend/supabase/schema.sql](./backend/supabase/schema.sql) in your Supabase SQL editor
+2. set `SUPABASE_URL`
+3. set `SUPABASE_SERVICE_ROLE_KEY`
+
+### 3. Configure the Frontend
+
+Create the frontend environment file:
 
 ```powershell
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-4. Optional: if you want real Supabase persistence, run [backend/supabase/schema.sql](./backend/supabase/schema.sql) in your Supabase SQL editor and fill in `SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY` in `backend/.env`.
+Recommended local frontend env:
 
-5. Start both apps:
+```env
+VITE_API_URL=http://localhost:4000/api
+VITE_SOCKET_URL=http://localhost:4000
+VITE_DEMO_USER_1_EMAIL=maya@skillcircle.dev
+VITE_DEMO_USER_1_PASSWORD=password123
+VITE_DEMO_USER_2_EMAIL=aarav@skillcircle.dev
+VITE_DEMO_USER_2_PASSWORD=password123
+```
+
+### 4. Run the App
+
+Start frontend and backend together:
 
 ```bash
 npm run dev
@@ -213,12 +283,72 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+### 5. Expected Result
+
+After startup:
+
+- frontend should be available at `http://localhost:5173`
+- backend API should be available at `http://localhost:4000/api`
+- the auth page should show demo credentials
+- you should be able to sign in, browse the dashboard, open circles, and edit your profile
+
 ## Local Development Notes
 
-- The backend can run without Supabase and will seed demo users, circles, posts, likes, and comments in memory.
-- The seeded data resets whenever the backend restarts in simulated mode.
-- The frontend expects the backend at `http://localhost:4000/api` unless overridden in `frontend/.env`.
-- The socket client expects the backend websocket server at `http://localhost:4000` unless overridden in `frontend/.env`.
+- If `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are not provided, the app runs in seeded in-memory mode.
+- Seeded memory data resets whenever the backend restarts.
+- The frontend expects `http://localhost:4000/api` unless overridden in `frontend/.env`.
+- The socket client expects `http://localhost:4000` unless overridden in `frontend/.env`.
+- Avatar and chat uploads can go through `POST /api/media/upload`.
+- Uploads are simulated by default and can use Cloudinary when its env vars are configured.
+
+## Environment Variables
+
+### Frontend
+
+#### API / Realtime
+
+- `VITE_API_URL`: full base URL for REST API requests used by the frontend
+- `VITE_SOCKET_URL`: base URL for the Socket.io connection
+
+#### Demo UX
+
+- `VITE_DEMO_USER_1_EMAIL`: demo account email shown on the auth page
+- `VITE_DEMO_USER_1_PASSWORD`: demo account password shown on the auth page
+- `VITE_DEMO_USER_2_EMAIL`: second demo account email shown on the auth page
+- `VITE_DEMO_USER_2_PASSWORD`: second demo account password shown on the auth page
+
+### Backend
+
+#### Server / App
+
+- `PORT`: Express server port
+- `APP_BASE_URL`: canonical backend base URL used for generated links and deployment-aware behavior
+- `NODE_ENV`: runtime mode such as `development` or `production`
+- `BODY_LIMIT`: JSON body size limit for API payloads
+- `FORCE_HTTPS`: redirects forwarded HTTP traffic to HTTPS in production environments
+
+#### Auth
+
+- `JWT_SECRET`: JWT signing secret used for authentication tokens
+
+#### CORS / Client Origins
+
+- `CLIENT_URL`: primary frontend origin
+- `CLIENT_URLS`: comma-separated list of allowed frontend origins for production deployments
+
+#### Database
+
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY`: privileged backend-only Supabase key for database access
+
+#### Storage
+
+- `STORAGE_MODE`: upload mode, `simulated` by default
+- `R2_PUBLIC_BASE_URL`: base URL used for simulated asset links and CDN-style fallbacks
+- `CLOUDINARY_CLOUD_NAME`: enables Cloudinary uploads when combined with API credentials
+- `CLOUDINARY_API_KEY`: Cloudinary API key
+- `CLOUDINARY_API_SECRET`: Cloudinary API secret
+- `CLOUDINARY_UPLOAD_PRESET`: optional Cloudinary upload preset
 
 ## Build Verification
 
@@ -226,6 +356,67 @@ npm run dev:frontend
 npm run build --workspace backend
 npm run build --workspace frontend
 ```
+
+## API Overview
+
+### Auth
+
+- `POST /api/auth/signup`: create a new user account
+- `POST /api/auth/login`: authenticate a user and return a JWT
+- `GET /api/auth/me`: fetch the currently authenticated user
+
+### Profile
+
+- `GET /api/profile`: fetch the current user profile
+- `PUT /api/profile`: update profile fields such as name, bio, avatar, and skills
+- `GET /api/profile/:userId`: fetch a public profile by user id
+
+### Posts
+
+- `GET /api/posts`: fetch feed posts, optionally filtered by circle
+- `POST /api/posts`: create a new post
+- `POST /api/posts/:postId/like`: toggle or create a like interaction
+- `POST /api/posts/:postId/comments`: add a comment to a post
+
+### Circles
+
+- `GET /api/circles`: list circles for discovery and membership state
+- `GET /api/circles/:circleId`: fetch a single circle and its details
+- `POST /api/circles`: create a new circle
+- `POST /api/circles/:circleId/join`: join a public circle
+
+### Media
+
+- `POST /api/media/upload`: upload avatar or chat media through the backend
+
+### Settings
+
+- `GET /api/settings`: fetch user settings
+- `PUT /api/settings`: update user settings
+
+### Analytics
+
+- `GET /api/dashboard`: fetch dashboard data and highlights
+- `GET /api/analytics/user`: fetch user-level analytics
+- `GET /api/analytics/circles/:circleId`: fetch circle-level analytics
+
+## Real-Time Events
+
+- `new_post`: pushes a newly created post to connected clients
+- `new_comment`: pushes a newly created comment so feeds stay in sync
+- `new_notification`: notifies users about activity relevant to them
+- `new_message`: delivers new chat messages in circle chat and direct chat
+- `message_status_update`: updates delivery/read state for chat messages
+- `message_reaction`: syncs reactions applied to chat messages
+- `media_upload_notification`: surfaces uploaded media events in chat flows
+- `typing`: broadcasts typing presence for circle chat and direct messages
+- `reaction_updated`: updates reaction counts for posts and comments
+- `post_updated`: syncs post edits
+- `post_deleted`: removes deleted posts from connected clients
+- `comment_updated`: syncs comment edits
+- `comment_deleted`: removes deleted comments from connected clients
+
+Dashboard and analytics endpoints derive from existing post, circle, and notification data, so local demo mode stays useful without extra services.
 
 ## Deployment
 
@@ -237,60 +428,72 @@ npm run build --workspace frontend
 
 ### Frontend Deployment Notes
 
-- Set `VITE_API_URL` to your deployed backend API URL, for example `https://skillcircle-api.onrender.com/api`
-- Set `VITE_SOCKET_URL` to your deployed backend base URL, for example `https://skillcircle-api.onrender.com`
-- Build command: `npm run build --workspace frontend`
-- Output directory: `frontend/dist`
+- set `VITE_API_URL` to your deployed backend API URL
+- set `VITE_SOCKET_URL` to your deployed backend base URL
+- build command: `npm run build --workspace frontend`
+- output directory: `frontend/dist`
 
 ### Backend Deployment Notes
 
-- Deploy the `backend` workspace as a Node service
-- Start command: `npm run start --workspace backend`
-- Set `CLIENT_URLS` to a comma-separated list of allowed frontend origins
-- Set `JWT_SECRET`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`
-- If using simulated storage, keep `STORAGE_MODE=simulated`; otherwise wire a real CDN or R2 flow
+- deploy the `backend` workspace as a Node service
+- start command: `npm run start --workspace backend`
+- set `CLIENT_URLS` to a comma-separated list of allowed frontend origins
+- set `JWT_SECRET`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`
+- if using simulated storage, keep `STORAGE_MODE=simulated`
+- if using hosted uploads, configure the Cloudinary env vars and test `POST /api/media/upload`
 
 ### Supabase Notes
 
-- Run the latest [schema.sql](./backend/supabase/schema.sql) before production deploys
-- The schema now includes notifications and circle chat messages
-- The schema also includes `streaks`, `user_settings`, premium circle metadata, and analytics-friendly counters
+- run the latest [schema.sql](./backend/supabase/schema.sql) before production deploys
+- the schema includes notifications and circle chat messages
+- the schema includes `streaks`, `user_settings`, premium circle metadata, and analytics-friendly counters
 
-## Real-Time Events
+## Security Considerations
 
-- `new_post`
-- `new_comment`
-- `new_notification`
-- `new_message`
-- Dashboard and analytics endpoints derive from existing post, circle, and notification data, so local demo mode stays useful without extra services
+- JWTs are used for authenticated API access, so `JWT_SECRET` must be strong and private
+- `SUPABASE_SERVICE_ROLE_KEY` must never be exposed to the frontend or committed to source control
+- authenticated media uploads should remain backend-mediated so storage credentials stay server-side
+- request validation and rate limiting are already part of the backend flow and should be preserved as the API grows
+- `.env` files should remain local or be managed through your deployment provider's secrets system
 
-## New Endpoints
+## Contributing
 
-- `GET /api/dashboard`
-- `GET /api/settings`
-- `PUT /api/settings`
-- `GET /api/analytics/user`
-- `GET /api/analytics/circles/:circleId`
+Contributions are welcome. If you want to improve SkillCircle:
 
-## Suggested Next Steps
+1. fork the repository
+2. create a feature branch
+3. make focused changes with clear commit messages
+4. test your changes locally
+5. open a pull request with a concise summary and screenshots when UI changes are involved
 
-- Replace simulated image URLs with real Cloudflare R2 uploads
-- Add route guards and server-side validation hardening
-- Add pagination and optimistic updates for larger feeds
-- Introduce tests for auth, post interactions, and circle membership flows
+### Code Style Expectations
 
-## API Overview
+- keep changes aligned with the existing React, Zustand, and Express patterns
+- prefer small, readable components and explicit state updates
+- preserve the repository abstraction between memory mode and Supabase mode
+- avoid committing secrets, generated logs, or local `.env` files
+- update documentation when behavior or setup changes
 
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `GET /api/profile`
-- `PUT /api/profile`
-- `GET /api/posts`
-- `POST /api/posts`
-- `POST /api/posts/:postId/like`
-- `POST /api/posts/:postId/comments`
-- `GET /api/circles`
-- `GET /api/circles/:circleId`
-- `POST /api/circles`
-- `POST /api/circles/:circleId/join`
+## Future Improvements
+
+- pagination and infinite scroll for larger feeds
+- more scalable realtime and notification architecture
+- mobile app clients
+- push notifications
+- richer moderation and admin controls
+- stronger automated test coverage
+- production-grade storage abstraction beyond simulated mode
+
+## Portfolio Value
+
+SkillCircle demonstrates:
+
+- product thinking around a focused social experience
+- full-stack architecture with clear separation of concerns
+- real-time collaboration patterns using Socket.io
+- practical state management in React with Zustand
+- backend flexibility through repository-driven persistence
+
+## License
+
+Add your preferred license here, for example `MIT`.

@@ -6,6 +6,8 @@ import { Avatar } from './Avatar.jsx';
 import { CircleBadge } from './CircleBadge.jsx';
 
 export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
+  const joinedCircles = circles.filter((circle) => circle.joined);
+
   return (
     <aside className="glass-panel sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] flex-col rounded-[32px] p-5 xl:flex">
       <div className="mb-8 flex items-center gap-3">
@@ -47,7 +49,7 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
           Your circles
         </p>
         <div className="space-y-2">
-          {circles.slice(0, 4).map((circle) => (
+          {joinedCircles.slice(0, 4).map((circle) => (
             <NavLink
               key={circle.id}
               to={`/circles/${circle.id}`}
@@ -60,6 +62,11 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
               <p className="muted-copy">{circle.membersCount} members</p>
             </NavLink>
           ))}
+          {!joinedCircles.length ? (
+            <div className="rounded-2xl border border-dashed px-4 py-4 text-sm text-[rgb(var(--muted))]">
+              Join a circle to make your feed feel more personal.
+            </div>
+          ) : null}
         </div>
       </div>
 

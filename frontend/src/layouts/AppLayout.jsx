@@ -6,6 +6,7 @@ import { RightPanel } from '../components/RightPanel.jsx';
 import { CreatePostModal } from '../components/CreatePostModal.jsx';
 import { CreateCircleModal } from '../components/CreateCircleModal.jsx';
 import { JoinByCodeModal } from '../components/JoinByCodeModal.jsx';
+import { BottomNav } from '../components/BottomNav.jsx';
 import { NotificationBell } from '../components/NotificationBell.jsx';
 import { SearchBar } from '../components/SearchBar.jsx';
 import { ToastViewport } from '../components/ToastViewport.jsx';
@@ -127,7 +128,7 @@ export function AppLayout() {
   }, [flushOfflineMessages, user]);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-3 py-4 sm:px-4 lg:flex-row lg:px-6 lg:py-6">
+    <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-3 py-4 pb-24 sm:px-4 lg:flex-row lg:px-6 lg:py-6 lg:pb-6">
       <Sidebar
         user={user}
         circles={circles}
@@ -238,6 +239,7 @@ export function AppLayout() {
       />
 
       <ToastViewport />
+      <BottomNav onCompose={() => setModalOpen(true)} />
     </div>
   );
 }

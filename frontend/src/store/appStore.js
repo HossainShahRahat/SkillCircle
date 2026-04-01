@@ -142,6 +142,7 @@ export const useAppStore = create((set, get) => ({
         submitting: false,
         modalOpen: false,
       });
+      get().showToast('Progress update published.');
     } catch (error) {
       set({ error: error.message, submitting: false });
       throw error;
@@ -209,11 +210,15 @@ export const useAppStore = create((set, get) => ({
     const data = await api.post(`/posts/${postId}/comments`, { content });
     const posts = get().posts.map((post) =>
       post.id === postId
-        ? {
-            ...post,
-            comments: [...post.comments, { ...data.comment, author: data.comment.author || author }],
-            commentsCount: post.commentsCount + 1,
-          }
+        ? (() => {
+            const nextComment = { ...data.comment, author: data.comment.author || author };
+            const hasComment = post.comments.some((comment) => comment.id === nextComment.id);
+            return {
+              ...post,
+              comments: hasComment ? post.comments : [...post.comments, nextComment],
+              commentsCount: hasComment ? post.commentsCount : post.commentsCount + 1,
+            };
+          })()
         : post,
     );
     set({ posts });
@@ -401,6 +406,7 @@ export const useAppStore = create((set, get) => ({
       currentMessages.push(data.message);
     }
     set({ messages: currentMessages });
+    get().showToast('Message sent.');
     return data.message;
   },
   async markCircleMessages(circleId, status = 'read') {
@@ -497,6 +503,7 @@ export const useAppStore = create((set, get) => ({
         ...get().directChats.filter((chat) => chat.id !== chatId),
       ],
     });
+    get().showToast('Message sent.');
     return data.message;
   },
   async markDirectMessages(chatId, status = 'read') {

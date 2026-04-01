@@ -7,3 +7,4 @@ coverage
 frontend/dist
 backend/data
 .runlogs
+.codex-runlogs
