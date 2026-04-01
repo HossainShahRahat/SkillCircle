@@ -10,6 +10,7 @@ export const useAppStore = create((set, get) => ({
   submitting: false,
   modalOpen: false,
   error: '',
+  toasts: [],
   async loadFeed(circleId = null) {
     set({ loadingFeed: true, error: '' });
     try {
@@ -92,24 +93,83 @@ export const useAppStore = create((set, get) => ({
     }
   },
   async joinCircle(circleId) {
-    await api.post(`/circles/${circleId}/join`, {});
+    const result = await api.post(`/circles/${circleId}/join`, {});
     set({
       circles: get().circles.map((circle) =>
         circle.id === circleId
-          ? { ...circle, joined: true, membersCount: circle.membersCount + 1 }
+          ? {
+              ...circle,
+              joined: true,
+              myRole: circle.myRole || 'member',
+              membersCount: circle.joined ? circle.membersCount : circle.membersCount + 1,
+            }
           : circle,
       ),
       activeCircle: get().activeCircle?.id === circleId
         ? {
             ...get().activeCircle,
             joined: true,
-            membersCount: get().activeCircle.membersCount + 1,
+            myRole: get().activeCircle.myRole || 'member',
+            membersCount: get().activeCircle.joined
+              ? get().activeCircle.membersCount
+              : get().activeCircle.membersCount + 1,
           }
         : get().activeCircle,
     });
+    get().showToast('Joined circle successfully.');
+    return result;
+  },
+  async joinCircleByCode(code) {
+    const data = await api.post('/circles/join-by-code', { code });
+    const joinedCircle = data.circle;
+    set({
+      circles: get().circles.map((circle) => (
+        circle.id === joinedCircle.id ? { ...circle, ...joinedCircle } : circle
+      )),
+      activeCircle: get().activeCircle?.id === joinedCircle.id ? joinedCircle : get().activeCircle,
+    });
+    get().showToast('Joined private circle successfully.');
+    return joinedCircle;
+  },
+  async leaveCircle(circleId) {
+    const activeCircle = get().activeCircle;
+    const result = await api.delete(`/circles/${circleId}/leave`);
+    set({
+      circles: get().circles.map((circle) =>
+        circle.id === circleId
+          ? {
+              ...circle,
+              joined: false,
+              myRole: null,
+              membersCount: Math.max(0, circle.membersCount - 1),
+            }
+          : circle,
+      ),
+      activeCircle: get().activeCircle?.id === circleId
+        ? {
+            ...get().activeCircle,
+            joined: false,
+            myRole: null,
+            membersCount: Math.max(0, get().activeCircle.membersCount - 1),
+            invite_code: null,
+          }
+        : get().activeCircle,
+      posts: activeCircle?.id === circleId && activeCircle?.is_private ? [] : get().posts,
+    });
+    get().showToast('Left circle successfully.');
+    return result;
   },
   setModalOpen(modalOpen) {
     set({ modalOpen });
   },
+  showToast(message, type = 'success') {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    set({ toasts: [...get().toasts, { id, message, type }] });
+    setTimeout(() => {
+      get().dismissToast(id);
+    }, 3200);
+  },
+  dismissToast(id) {
+    set({ toasts: get().toasts.filter((toast) => toast.id !== id) });
+  },
 }));
-

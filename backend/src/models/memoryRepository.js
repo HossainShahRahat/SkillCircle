@@ -37,6 +37,28 @@ function enrichPost(post, users, circles, comments, likes, currentUserId) {
   };
 }
 
+function getMembership(circleMembers, circleId, userId) {
+  return circleMembers.find((member) => member.circle_id === circleId && member.user_id === userId) || null;
+}
+
+function serializeCircle(circle, circleMembers, userId) {
+  const membership = userId ? getMembership(circleMembers, circle.id, userId) : null;
+  return {
+    ...circle,
+    membersCount: circleMembers.filter((member) => member.circle_id === circle.id).length,
+    joined: Boolean(membership),
+    myRole: membership?.role || null,
+  };
+}
+
+function generateInviteCode(existingCircles) {
+  let code = '';
+  do {
+    code = Math.random().toString(36).slice(2, 8).toUpperCase();
+  } while (existingCircles.some((circle) => circle.invite_code === code));
+  return code;
+}
+
 export function createMemoryRepository() {
   const users = structuredClone(demoUsers);
   const posts = structuredClone(demoPosts);
@@ -72,6 +94,15 @@ export function createMemoryRepository() {
       return publicUser(user);
     },
     async getFeed(currentUserId, circleId = null) {
+      const targetCircle = circleId ? circles.find((circle) => circle.id === circleId) : null;
+      const canAccessCircle = !targetCircle
+        || !targetCircle.is_private
+        || Boolean(getMembership(circleMembers, circleId, currentUserId));
+
+      if (circleId && !canAccessCircle) {
+        return [];
+      }
+
       return posts
         .filter((post) => (circleId ? post.circle_id === circleId : true))
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -119,19 +150,15 @@ export function createMemoryRepository() {
       };
     },
     async listCircles(userId) {
-      return circles.map((circle) => ({
-        ...circle,
-        membersCount: circleMembers.filter((member) => member.circle_id === circle.id).length,
-        joined: userId
-          ? circleMembers.some((member) => member.circle_id === circle.id && member.user_id === userId)
-          : false,
-      }));
+      return circles.map((circle) => serializeCircle(circle, circleMembers, userId));
     },
-    async createCircle({ name, description, userId }) {
+    async createCircle({ name, description, isPrivate, userId }) {
       const circle = {
         id: `c_${nanoid(10)}`,
         name,
         description,
+        is_private: Boolean(isPrivate),
+        invite_code: isPrivate ? generateInviteCode(circles) : null,
         created_by: userId,
         created_at: new Date().toISOString(),
       };
@@ -140,39 +167,90 @@ export function createMemoryRepository() {
         id: `cm_${nanoid(10)}`,
         user_id: userId,
         circle_id: circle.id,
+        role: 'admin',
         created_at: new Date().toISOString(),
       });
-      return {
-        ...circle,
-        membersCount: 1,
-        joined: true,
-      };
+      return serializeCircle(circle, circleMembers, userId);
     },
     async joinCircle(circleId, userId) {
+      const circle = circles.find((item) => item.id === circleId);
+      if (!circle) {
+        const error = new Error('Circle not found.');
+        error.status = 404;
+        throw error;
+      }
+      if (circle.is_private) {
+        const error = new Error('This private circle requires an invite code.');
+        error.status = 400;
+        throw error;
+      }
+
       const existing = circleMembers.find((member) => member.circle_id === circleId && member.user_id === userId);
       if (!existing) {
         circleMembers.push({
           id: `cm_${nanoid(10)}`,
           user_id: userId,
           circle_id: circleId,
+          role: 'member',
           created_at: new Date().toISOString(),
         });
       }
 
       return { joined: true };
     },
+    async joinCircleByCode(code, userId) {
+      const circle = circles.find((item) => item.invite_code === code?.trim().toUpperCase());
+      if (!circle || !circle.is_private) {
+        const error = new Error('Invalid invite code.');
+        error.status = 400;
+        throw error;
+      }
+
+      const existing = getMembership(circleMembers, circle.id, userId);
+      if (!existing) {
+        circleMembers.push({
+          id: `cm_${nanoid(10)}`,
+          user_id: userId,
+          circle_id: circle.id,
+          role: 'member',
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      return { joined: true, circle: serializeCircle(circle, circleMembers, userId) };
+    },
+    async leaveCircle(circleId, userId) {
+      const membership = getMembership(circleMembers, circleId, userId);
+      if (!membership) {
+        const error = new Error('You are not a member of this circle.');
+        error.status = 400;
+        throw error;
+      }
+      if (membership.role === 'admin') {
+        const error = new Error('Admins cannot leave their own circle.');
+        error.status = 400;
+        throw error;
+      }
+
+      circleMembers.splice(circleMembers.indexOf(membership), 1);
+      return { left: true };
+    },
     async getCircle(circleId, userId) {
       const circle = circles.find((item) => item.id === circleId);
       if (!circle) return null;
+      const membership = userId ? getMembership(circleMembers, circle.id, userId) : null;
+
+      if (circle.is_private && !membership) {
+        return {
+          ...serializeCircle(circle, circleMembers, userId),
+          invite_code: null,
+        };
+      }
 
       return {
-        ...circle,
-        membersCount: circleMembers.filter((member) => member.circle_id === circle.id).length,
-        joined: userId
-          ? circleMembers.some((member) => member.circle_id === circle.id && member.user_id === userId)
-          : false,
+        ...serializeCircle(circle, circleMembers, userId),
+        invite_code: membership?.role === 'admin' ? circle.invite_code : null,
       };
     },
   };
 }
-

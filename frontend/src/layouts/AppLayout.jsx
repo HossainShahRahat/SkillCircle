@@ -5,6 +5,8 @@ import { Sidebar } from '../components/Sidebar.jsx';
 import { RightPanel } from '../components/RightPanel.jsx';
 import { CreatePostModal } from '../components/CreatePostModal.jsx';
 import { CreateCircleModal } from '../components/CreateCircleModal.jsx';
+import { JoinByCodeModal } from '../components/JoinByCodeModal.jsx';
+import { ToastViewport } from '../components/ToastViewport.jsx';
 import { Button } from '../components/Button.jsx';
 import { useAuthStore } from '../store/authStore.js';
 import { useAppStore } from '../store/appStore.js';
@@ -21,8 +23,12 @@ export function AppLayout() {
   const setModalOpen = useAppStore((state) => state.setModalOpen);
   const createPost = useAppStore((state) => state.createPost);
   const createCircle = useAppStore((state) => state.createCircle);
+  const joinCircle = useAppStore((state) => state.joinCircle);
+  const joinCircleByCode = useAppStore((state) => state.joinCircleByCode);
+  const showToast = useAppStore((state) => state.showToast);
   const submitting = useAppStore((state) => state.submitting);
   const [circleModalOpen, setCircleModalOpen] = useState(false);
+  const [joinCodeModalOpen, setJoinCodeModalOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
@@ -78,7 +84,14 @@ export function AppLayout() {
           <main className="min-w-0 flex-1">
             <Outlet />
           </main>
-          <RightPanel circles={circles} onCreateCircle={() => setCircleModalOpen(true)} />
+          <RightPanel
+            circles={circles}
+            onCreateCircle={() => setCircleModalOpen(true)}
+            onOpenJoinByCode={() => setJoinCodeModalOpen(true)}
+            onJoinPublic={(circleId) => {
+              joinCircle(circleId).catch((error) => showToast(error.message, 'error'));
+            }}
+          />
         </div>
       </div>
 
@@ -99,7 +112,23 @@ export function AppLayout() {
         onSubmit={createCircle}
         submitting={submitting}
       />
+
+      <JoinByCodeModal
+        open={joinCodeModalOpen}
+        onClose={() => setJoinCodeModalOpen(false)}
+        onSubmit={async (code) => {
+          try {
+            const circle = await joinCircleByCode(code);
+            navigate(`/circles/${circle.id}`);
+          } catch (error) {
+            showToast(error.message || 'Invalid invite code.', 'error');
+            throw error;
+          }
+        }}
+        submitting={submitting}
+      />
+
+      <ToastViewport />
     </div>
   );
 }
-

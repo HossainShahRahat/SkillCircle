@@ -17,7 +17,7 @@ export async function listCircles(req, res, next) {
 
 export async function createCircle(req, res, next) {
   try {
-    const { name, description } = req.body;
+    const { name, description, is_private: isPrivate } = req.body;
     if (!name?.trim() || !description?.trim()) {
       throw badRequest('Circle name and description are required.');
     }
@@ -25,6 +25,7 @@ export async function createCircle(req, res, next) {
     const circle = await repository.createCircle({
       name: name.trim(),
       description: description.trim(),
+      isPrivate: Boolean(isPrivate),
       userId: req.user.id,
     });
 
@@ -43,6 +44,29 @@ export async function joinCircle(req, res, next) {
   }
 }
 
+export async function joinCircleByCode(req, res, next) {
+  try {
+    const { code } = req.body;
+    if (!code?.trim()) {
+      throw badRequest('Invite code is required.');
+    }
+
+    const result = await repository.joinCircleByCode(code, req.user.id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function leaveCircle(req, res, next) {
+  try {
+    const result = await repository.leaveCircle(req.params.circleId, req.user.id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getCircle(req, res, next) {
   try {
     const circle = await repository.getCircle(req.params.circleId, req.user?.id || null);
@@ -55,4 +79,3 @@ export async function getCircle(req, res, next) {
     next(error);
   }
 }
-

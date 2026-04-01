@@ -15,6 +15,8 @@ create table if not exists circles (
   id uuid primary key default gen_random_uuid(),
   name text unique not null,
   description text not null,
+  is_private boolean not null default false,
+  invite_code text unique,
   created_by uuid not null references users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
@@ -23,9 +25,14 @@ create table if not exists circle_members (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
   circle_id uuid not null references circles(id) on delete cascade,
+  role text not null default 'member',
   created_at timestamptz not null default now(),
   unique (user_id, circle_id)
 );
+
+alter table circles add column if not exists is_private boolean not null default false;
+alter table circles add column if not exists invite_code text unique;
+alter table circle_members add column if not exists role text not null default 'member';
 
 create table if not exists posts (
   id uuid primary key default gen_random_uuid(),

@@ -26,6 +26,8 @@ export const demoCircles = [
     id: 'c_demo_1',
     name: 'React Sprint',
     description: 'Daily build logs, concept breakdowns, and feedback loops for shipping React faster.',
+    is_private: false,
+    invite_code: null,
     created_by: 'u_demo_1',
     created_at: '2026-03-21T10:00:00.000Z',
   },
@@ -33,16 +35,23 @@ export const demoCircles = [
     id: 'c_demo_2',
     name: 'System Design Notes',
     description: 'A practical circle for whiteboarding backend architecture and reflecting on tradeoffs.',
+    is_private: true,
+    invite_code: 'SYS246',
     created_by: 'u_demo_2',
     created_at: '2026-03-22T15:00:00.000Z',
   },
 ];
 
 export const demoCircleMembers = [
-  { id: 'cm_demo_1', user_id: 'u_demo_1', circle_id: 'c_demo_1', created_at: '2026-03-21T10:05:00.000Z' },
-  { id: 'cm_demo_2', user_id: 'u_demo_2', circle_id: 'c_demo_2', created_at: '2026-03-22T15:05:00.000Z' },
-  { id: 'cm_demo_3', user_id: 'u_demo_2', circle_id: 'c_demo_1', created_at: '2026-03-23T09:30:00.000Z' },
+  { id: 'cm_demo_1', user_id: 'u_demo_1', circle_id: 'c_demo_1', role: 'admin', created_at: '2026-03-21T10:05:00.000Z' },
+  { id: 'cm_demo_2', user_id: 'u_demo_2', circle_id: 'c_demo_2', role: 'admin', created_at: '2026-03-22T15:05:00.000Z' },
+  { id: 'cm_demo_3', user_id: 'u_demo_2', circle_id: 'c_demo_1', role: 'member', created_at: '2026-03-23T09:30:00.000Z' },
 ];
+
+export const demoInviteHint = {
+  privateCircleCode: 'SYS246',
+};
+
 
 export const demoPosts = [
   {

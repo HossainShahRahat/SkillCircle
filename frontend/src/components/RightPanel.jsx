@@ -2,8 +2,9 @@ import { TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from './Card.jsx';
 import { Button } from './Button.jsx';
+import { CircleBadge } from './CircleBadge.jsx';
 
-export function RightPanel({ circles, onCreateCircle }) {
+export function RightPanel({ circles, onCreateCircle, onOpenJoinByCode, onJoinPublic }) {
   return (
     <aside className="hidden w-[320px] shrink-0 space-y-5 2xl:block">
       <Card className="overflow-hidden p-0">
@@ -28,24 +29,46 @@ export function RightPanel({ circles, onCreateCircle }) {
         </div>
         <div className="space-y-3">
           {circles.slice(0, 5).map((circle) => (
-            <Link
+            <div
               key={circle.id}
-              to={`/circles/${circle.id}`}
-              className="block rounded-2xl border px-4 py-4 transition hover:border-[rgba(var(--accent),0.25)] hover:bg-[rgb(var(--bg-soft))]"
+              className="rounded-2xl border px-4 py-4 transition hover:border-[rgba(var(--accent),0.25)] hover:bg-[rgb(var(--bg-soft))]"
             >
-              <div className="mb-1 flex items-center justify-between">
-                <p className="font-semibold">{circle.name}</p>
-                <span className="rounded-full bg-[rgb(var(--accent-soft))] px-2 py-1 text-xs font-semibold">
-                  {circle.membersCount}
-                </span>
-              </div>
-              <p className="muted-copy">{circle.description}</p>
-            </Link>
+              <Link to={`/circles/${circle.id}`} className="block">
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="font-semibold">{circle.name}</p>
+                  <CircleBadge isPrivate={circle.is_private} />
+                </div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">
+                  {circle.membersCount} members
+                </p>
+                <p className="muted-copy">{circle.description}</p>
+              </Link>
+              {!circle.joined ? (
+                <Button
+                  variant="ghost"
+                  className="mt-3 w-full"
+                  onClick={() => {
+                    if (circle.is_private) {
+                      onOpenJoinByCode();
+                      return;
+                    }
+                    onJoinPublic(circle.id);
+                  }}
+                >
+                  {circle.is_private ? 'Enter code' : 'Join circle'}
+                </Button>
+              ) : null}
+            </div>
           ))}
         </div>
-        <Button variant="secondary" className="mt-4 w-full" onClick={onCreateCircle}>
-          Create a circle
-        </Button>
+        <div className="mt-4 grid gap-3">
+          <Button variant="secondary" className="w-full" onClick={onCreateCircle}>
+            Create a circle
+          </Button>
+          <Button variant="ghost" className="w-full" onClick={onOpenJoinByCode}>
+            Enter invite code
+          </Button>
+        </div>
       </Card>
     </aside>
   );

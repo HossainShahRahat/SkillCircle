@@ -6,4 +6,4 @@ dist
 coverage
 frontend/dist
 backend/data
-
+.runlogs

@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { navigation } from '../data/navigation.js';
 import { Button } from './Button.jsx';
 import { Avatar } from './Avatar.jsx';
+import { CircleBadge } from './CircleBadge.jsx';
 
 export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
   return (
@@ -52,7 +53,10 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
               to={`/circles/${circle.id}`}
               className="block rounded-2xl border px-4 py-3 transition hover:border-[rgba(var(--accent),0.25)] hover:bg-[rgb(var(--bg-soft))]"
             >
-              <p className="font-semibold">{circle.name}</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold">{circle.name}</p>
+                <CircleBadge isPrivate={circle.is_private} />
+              </div>
               <p className="muted-copy">{circle.membersCount} members</p>
             </NavLink>
           ))}
@@ -75,4 +79,3 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
     </aside>
   );
 }
-
