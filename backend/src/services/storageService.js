@@ -10,12 +10,21 @@ function cloudinaryConfigured() {
   );
 }
 
+function sanitizePublicId(value) {
+  return String(value || 'upload')
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    || 'upload';
+}
+
 async function uploadToCloudinary({ dataUrl, fileName, contentType }) {
   const endpoint = `https://api.cloudinary.com/v1_1/${config.cloudinaryCloudName}/auto/upload`;
   const body = new URLSearchParams();
   const timestamp = Math.floor(Date.now() / 1000);
   const folder = 'skillcircle/chat';
-  const publicId = `${Date.now().toString(36)}-${(fileName || 'upload').replace(/\.[^.]+$/, '')}`;
+  const publicId = `${Date.now().toString(36)}-${sanitizePublicId(fileName)}`;
   body.set('file', dataUrl);
   body.set('api_key', config.cloudinaryApiKey);
   body.set('timestamp', String(timestamp));
@@ -87,7 +96,10 @@ export async function createChatMediaAttachment({
     };
   }
 
-  if ((config.storageMode === 'cloudinary' || cloudinaryConfigured()) && dataUrl) {
+  if (config.storageMode === 'cloudinary' && dataUrl) {
+    if (!cloudinaryConfigured()) {
+      throw new Error('Cloudinary storage mode requires Cloudinary credentials.');
+    }
     const uploaded = await uploadToCloudinary({
       dataUrl,
       fileName: normalizedName,

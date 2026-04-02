@@ -25,7 +25,6 @@ export function AppLayout() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const token = useAuthStore((state) => state.token);
-  const refreshUser = useAuthStore((state) => state.refreshUser);
   const posts = useAppStore((state) => state.posts);
   const circles = useAppStore((state) => state.circles);
   const loadCircles = useAppStore((state) => state.loadCircles);
@@ -56,9 +55,8 @@ export function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
-    refreshUser();
     loadCircles();
-  }, [refreshUser, loadCircles]);
+  }, [loadCircles]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -264,7 +262,6 @@ export function AppLayout() {
         setUser={setUser}
         onComplete={() => {
           loadCircles();
-          refreshUser();
         }}
       />
     </div>

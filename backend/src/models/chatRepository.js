@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { createClient } from '@supabase/supabase-js';
-import { config, isSupabaseConfigured } from '../config.js';
+import { config, useSupabaseRepository } from '../config.js';
 import { repository } from './repository.js';
 import { demoMessages } from '../services/seedData.js';
 
@@ -916,6 +916,6 @@ class SupabaseChatRepository {
   }
 }
 
-export const chatRepository = isSupabaseConfigured
+export const chatRepository = useSupabaseRepository
   ? new SupabaseChatRepository()
   : new MemoryChatRepository();

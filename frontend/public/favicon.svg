@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="skillcircle-gradient" x1="8" x2="56" y1="8" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f172a" />
+      <stop offset="1" stop-color="#2563eb" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#skillcircle-gradient)" />
+  <path
+    d="M42.4 18.6c-3.1-2.3-6.8-3.4-10.9-3.4-9.8 0-17.3 7.4-17.3 16.9 0 9.5 7.5 16.9 17.3 16.9 4 0 7.7-1.1 10.9-3.4l-4.7-6.4c-1.8 1.3-3.8 1.9-6.2 1.9-5.3 0-9.3-3.8-9.3-9 0-5.2 4-9 9.3-9 2.3 0 4.4.6 6.2 1.9z"
+    fill="#f8fafc"
+  />
+  <circle cx="46.5" cy="32" r="4.5" fill="#f8fafc" />
+</svg>

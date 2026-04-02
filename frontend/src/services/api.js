@@ -1,17 +1,35 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+let unauthorizedHandler = null;
 
 async function request(path, options = {}) {
   const token = localStorage.getItem('skillcircle-token');
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+      ...options,
+      signal: options.signal || controller.signal,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await response.json().catch(() => ({}));
+  if (response.status === 401 && unauthorizedHandler) {
+    unauthorizedHandler();
+  }
   if (!response.ok) {
     throw new Error(data.message || 'Request failed.');
   }
@@ -41,3 +59,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
 };
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler;
+}
