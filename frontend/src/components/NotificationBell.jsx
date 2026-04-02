@@ -33,7 +33,7 @@ export function NotificationBell() {
     <div className="relative">
       <Button
         variant="ghost"
-        className="relative h-11 w-11 rounded-full border bg-[rgb(var(--bg-elevated))] p-0"
+        className="relative h-10 w-10 rounded-full bg-[rgb(var(--bg-soft))] p-0"
         onClick={() => {
           if (!open) {
             if (token) {
@@ -52,24 +52,26 @@ export function NotificationBell() {
       </Button>
 
       {open ? (
-        <div className="surface-card absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[min(360px,calc(100vw-2rem))] p-4">
+        <div className="surface-card absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[min(360px,calc(100vw-2rem))] overflow-hidden p-0">
+          <div className="border-b px-4 py-3">
           <div className="mb-3">
             <p className="text-base font-bold">Notifications</p>
             <p className="muted-copy">Activity around your posts and circles.</p>
           </div>
+          </div>
 
           {notificationsLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-3 p-4">
               {[1, 2, 3].map((item) => (
                 <div key={item} className="h-14 animate-pulse rounded-2xl bg-[rgb(var(--bg-soft))]" />
               ))}
             </div>
           ) : notifications.length ? (
-            <div className="max-h-[380px] space-y-2 overflow-y-auto">
+            <div className="max-h-[380px] space-y-1 overflow-y-auto p-2">
               {notifications.map((notification) => (
                 <button
                   key={notification.id}
-                  className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))] ${notification.is_read ? 'opacity-70' : 'bg-[rgb(var(--accent-soft))]/40'}`}
+                  className={`w-full rounded-xl px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))] ${notification.is_read ? 'opacity-70' : 'bg-[rgb(var(--accent-soft))]/40'}`}
                   onClick={async () => {
                     if (!notification.is_read) {
                       await markNotificationRead(notification.id);
@@ -90,13 +92,13 @@ export function NotificationBell() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-5 text-sm text-[rgb(var(--muted))]">
+            <div className="px-4 py-5 text-sm text-[rgb(var(--muted))]">
               No notifications yet.
             </div>
           )}
           <Button
             variant="secondary"
-            className="mt-3 w-full"
+            className="m-3 w-[calc(100%-1.5rem)] rounded-xl"
             onClick={() => {
               setOpen(false);
               navigate('/notifications');

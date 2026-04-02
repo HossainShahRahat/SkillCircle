@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Menu, Plus } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar.jsx';
 import { RightPanel } from '../components/RightPanel.jsx';
@@ -8,11 +7,10 @@ import { CreateCircleModal } from '../components/CreateCircleModal.jsx';
 import { FeatureTips } from '../components/FeatureTips.jsx';
 import { JoinByCodeModal } from '../components/JoinByCodeModal.jsx';
 import { BottomNav } from '../components/BottomNav.jsx';
-import { NotificationBell } from '../components/NotificationBell.jsx';
 import { OnboardingFlow } from '../components/OnboardingFlow.jsx';
-import { SearchBar } from '../components/SearchBar.jsx';
 import { ToastViewport } from '../components/ToastViewport.jsx';
-import { Button } from '../components/Button.jsx';
+import { TopNav } from '../components/TopNav.jsx';
+import { FloatingChatDock } from '../components/FloatingChatDock.jsx';
 import { useAuthStore } from '../store/authStore.js';
 import { useAppStore } from '../store/appStore.js';
 import { useTheme } from '../hooks/useTheme.js';
@@ -28,6 +26,7 @@ export function AppLayout() {
   const posts = useAppStore((state) => state.posts);
   const circles = useAppStore((state) => state.circles);
   const loadCircles = useAppStore((state) => state.loadCircles);
+  const loadDirectChats = useAppStore((state) => state.loadDirectChats);
   const modalOpen = useAppStore((state) => state.modalOpen);
   const setModalOpen = useAppStore((state) => state.setModalOpen);
   const createPost = useAppStore((state) => state.createPost);
@@ -56,7 +55,10 @@ export function AppLayout() {
 
   useEffect(() => {
     loadCircles();
-  }, [loadCircles]);
+    if (token) {
+      loadDirectChats().catch(() => null);
+    }
+  }, [loadCircles, loadDirectChats, token]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -137,83 +139,49 @@ export function AppLayout() {
   }, [flushOfflineMessages, user]);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-3 py-4 pb-24 sm:px-4 lg:flex-row lg:px-6 lg:py-6 lg:pb-6">
-      <Sidebar
+    <div className="social-shell">
+      <TopNav
         user={user}
-        circles={circles}
-        onCompose={() => setModalOpen(true)}
-        onToggleTheme={toggleTheme}
         theme={theme}
+        onToggleTheme={toggleTheme}
+        onCompose={() => setModalOpen(true)}
+        onToggleMobileMenu={() => setMobileNavOpen((open) => !open)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="glass-panel mb-5 flex items-center justify-between rounded-[28px] px-4 py-3 xl:hidden">
-          <div>
-            <p className="font-display text-2xl">SkillCircle</p>
-            <p className="muted-copy">Build consistency out loud.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" className="h-12 w-12 rounded-full p-0" onClick={() => setModalOpen(true)}>
-              <Plus size={18} />
-            </Button>
-            <Button variant="ghost" className="h-12 w-12 rounded-full p-0" onClick={() => setMobileNavOpen((open) => !open)}>
-              <Menu size={18} />
-            </Button>
-          </div>
-        </div>
+      <div className="mx-auto flex max-w-[1440px] gap-4 px-3 py-4 pb-24 sm:px-4 lg:px-6 lg:pb-6">
+        <Sidebar
+          user={user}
+          circles={circles}
+          onCompose={() => setModalOpen(true)}
+          onToggleTheme={toggleTheme}
+          theme={theme}
+          mobileOpen={mobileNavOpen}
+          onCloseMobile={() => setMobileNavOpen(false)}
+        />
 
-        {mobileNavOpen ? (
-          <div className="surface-card mb-5 space-y-3 p-4 xl:hidden">
-            <div className="grid gap-2">
-              {navigation.map(({ label, path }) => (
-                <NavLink
-                  key={path}
-                  to={path}
-                  className="rounded-2xl border px-4 py-3 text-sm font-semibold transition hover:bg-[rgb(var(--bg-soft))]"
-                  onClick={() => setMobileNavOpen(false)}
-                >
-                  {label}
-                </NavLink>
-              ))}
-            </div>
-            {circles.slice(0, 4).map((circle) => (
-              <button
-                key={circle.id}
-                className="w-full rounded-2xl border px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))]"
-                onClick={() => {
-                  navigate(`/circles/${circle.id}`);
-                  setMobileNavOpen(false);
-                }}
-              >
-                <p className="font-semibold">{circle.name}</p>
-                <p className="muted-copy">{circle.membersCount} members</p>
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar />
-          <div className="flex items-center justify-end">
-            <NotificationBell />
-          </div>
-        </div>
-
-        <FeatureTips user={user} onCompose={() => setModalOpen(true)} />
-
-        <div className="flex min-w-0 flex-col gap-6 2xl:flex-row">
-          <main className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1">
+          <FeatureTips user={user} onCompose={() => setModalOpen(true)} />
+          <main className="mx-auto mt-4 min-w-0 max-w-[680px]">
             <Outlet />
           </main>
-          <RightPanel
-            circles={circles}
-            onCreateCircle={() => setCircleModalOpen(true)}
-            onOpenJoinByCode={() => setJoinCodeModalOpen(true)}
-            onJoinPublic={(circleId) => {
-              joinCircle(circleId).catch((error) => showToast(error.message, 'error'));
-            }}
-          />
         </div>
+
+        <RightPanel
+          user={user}
+          circles={circles}
+          onOpenChat={(chatId) => {
+            useAppStore.getState().setActiveDirectChat(chatId);
+            useAppStore.getState().openDirectChatBox(chatId);
+            if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+              navigate('/messages');
+            }
+          }}
+          onCreateCircle={() => setCircleModalOpen(true)}
+          onOpenJoinByCode={() => setJoinCodeModalOpen(true)}
+          onJoinPublic={(circleId) => {
+            joinCircle(circleId).catch((error) => showToast(error.message, 'error'));
+          }}
+        />
       </div>
 
       <CreatePostModal
@@ -251,6 +219,7 @@ export function AppLayout() {
 
       <ToastViewport />
       <BottomNav onCompose={() => setModalOpen(true)} />
+      <FloatingChatDock />
       <OnboardingFlow
         user={user}
         circles={circles}

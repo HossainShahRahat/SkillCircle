@@ -76,6 +76,8 @@ export const useAppStore = create((set, get) => ({
   messagesLoading: false,
   directChats: [],
   activeDirectChatId: null,
+  openDirectChatIds: [],
+  minimizedDirectChatIds: [],
   directMessagesByChat: {},
   directMessagesLoading: false,
   socketConnected: false,
@@ -434,11 +436,47 @@ export const useAppStore = create((set, get) => ({
   setActiveDirectChat(chatId) {
     set({ activeDirectChatId: chatId });
   },
+  openDirectChatBox(chatId) {
+    if (!chatId) return;
+    set({
+      openDirectChatIds: [
+        chatId,
+        ...get().openDirectChatIds.filter((id) => id !== chatId),
+      ].slice(0, 2),
+      minimizedDirectChatIds: get().minimizedDirectChatIds.filter((id) => id !== chatId),
+    });
+  },
+  closeDirectChatBox(chatId) {
+    set({
+      openDirectChatIds: get().openDirectChatIds.filter((id) => id !== chatId),
+      minimizedDirectChatIds: get().minimizedDirectChatIds.filter((id) => id !== chatId),
+    });
+  },
+  minimizeDirectChatBox(chatId) {
+    if (!chatId) return;
+    set({
+      minimizedDirectChatIds: get().minimizedDirectChatIds.includes(chatId)
+        ? get().minimizedDirectChatIds
+        : [chatId, ...get().minimizedDirectChatIds].slice(0, 2),
+    });
+  },
+  restoreDirectChatBox(chatId) {
+    if (!chatId) return;
+    set({
+      minimizedDirectChatIds: get().minimizedDirectChatIds.filter((id) => id !== chatId),
+      openDirectChatIds: [
+        chatId,
+        ...get().openDirectChatIds.filter((id) => id !== chatId),
+      ].slice(0, 2),
+    });
+  },
   async createDirectChat(participantId) {
     const data = await api.post('/messages/direct-chats', { participantId });
     set({
       directChats: [data.chat, ...get().directChats.filter((chat) => chat.id !== data.chat.id)],
       activeDirectChatId: data.chat.id,
+      openDirectChatIds: [data.chat.id, ...get().openDirectChatIds.filter((id) => id !== data.chat.id)].slice(0, 2),
+      minimizedDirectChatIds: get().minimizedDirectChatIds.filter((id) => id !== data.chat.id),
     });
     return data.chat;
   },
@@ -722,6 +760,8 @@ export const useAppStore = create((set, get) => ({
         directChats: promoted
           ? [promoted, ...updatedChats.filter((chat) => chat.id !== targetId)]
           : updatedChats,
+        openDirectChatIds: [targetId, ...get().openDirectChatIds.filter((id) => id !== targetId)].slice(0, 2),
+        minimizedDirectChatIds: get().minimizedDirectChatIds.filter((id) => id !== targetId),
       });
       return;
     }

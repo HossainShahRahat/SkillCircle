@@ -31,12 +31,12 @@ export function MessageBubble({
 
   return (
     <div className={`animate-[message-in_180ms_ease-out] flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex max-w-[88%] items-end gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}>
-        <Avatar user={message.author} size="sm" />
+      <div className={`flex max-w-[88%] items-end gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+        {!isOwn ? <Avatar user={message.author} size="sm" /> : null}
         <div className="group">
           <div
-            className={`rounded-[24px] px-4 py-3 shadow-sm ${
-              isOwn ? 'bg-[rgb(var(--text))] text-white dark:bg-white dark:text-slate-900' : 'border bg-[rgb(var(--bg-soft))]'
+            className={`rounded-[18px] px-4 py-3 shadow-sm ${
+              isOwn ? 'bg-[rgb(var(--accent))] text-white' : 'border bg-[rgb(var(--bg-elevated))]'
             }`}
           >
             {!isOwn ? <p className="mb-1 text-xs font-semibold">{message.author?.name}</p> : null}
@@ -48,7 +48,7 @@ export function MessageBubble({
             </div>
           </div>
 
-          <div className={`mt-1 flex flex-wrap gap-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+          <div className={`mt-1 flex flex-wrap gap-2 ${isOwn ? 'justify-end pr-1' : 'justify-start pl-1'}`}>
             {message.reactions?.length ? message.reactions.map((reaction) => (
               <button
                 key={reaction.emoji}

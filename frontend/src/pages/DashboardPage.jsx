@@ -66,69 +66,62 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <Card className="overflow-hidden p-0">
-        <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[1.15fr_0.85fr] md:p-8">
+      <Card className="p-5 sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.24em] text-[rgb(var(--muted))]">Activity dashboard</p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight">Momentum that reflects your circles.</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[rgb(var(--muted))]">
-              Your feed now prioritizes the circles you joined, then surfaces the activity most likely to keep your streak and conversations moving.
+            <p className="text-sm font-semibold text-[rgb(var(--muted))]">Home</p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight">Welcome back, {user?.name?.split(' ')[0] || 'there'}</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-[rgb(var(--muted))]">
+              Catch up on the people, circles, and learning streaks that matter most today.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button onClick={() => setModalOpen(true)}>Share today&apos;s progress</Button>
-              <Button variant="secondary" onClick={() => navigate('/circles')}>
-                <Users size={16} />
-                Explore circles
-              </Button>
-              <Button variant="secondary" onClick={() => loadDashboard()}>
-                <RefreshCw size={16} />
-                Refresh dashboard
-              </Button>
-            </div>
           </div>
-          <div className="grid gap-4">
-            <div className="rounded-[28px] bg-[rgb(var(--bg-soft))] p-5">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgb(var(--text))] text-white dark:bg-white dark:text-slate-900">
-                  <Flame size={20} />
-                </div>
-                <div>
-                  <p className="font-semibold">Posting streak</p>
-                  <p className="muted-copy">Small, consistent updates compound fast.</p>
-                </div>
-              </div>
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-4xl font-bold">{dashboard.streak?.current_streak || 0}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">days in a row</p>
-                </div>
-                <StreakBadge badge={dashboard.streak?.badge} />
-              </div>
-            </div>
-            <div className="rounded-[28px] bg-[rgb(var(--bg-soft))] p-5">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgb(var(--accent))] text-white">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <p className="font-semibold">This week</p>
-                  <p className="muted-copy">A quick read on your current learning rhythm.</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  [String(dashboard.insights?.joinedCircles || 0), 'joined circles'],
-                  [String(dashboard.insights?.totalPosts || 0), 'your updates'],
-                  [String(posts.length), 'in dashboard'],
-                ].map(([value, label]) => (
-                  <div key={label} className="rounded-2xl bg-[rgb(var(--bg-elevated))] p-4">
-                    <p className="text-2xl font-bold">{value}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="flex flex-wrap gap-3">
+            <Button className="rounded-xl" onClick={() => setModalOpen(true)}>Create post</Button>
+            <Button className="rounded-xl" variant="secondary" onClick={() => navigate('/circles')}>
+              <Users size={16} />
+              Explore circles
+            </Button>
+            <Button className="rounded-xl" variant="secondary" onClick={() => loadDashboard()}>
+              <RefreshCw size={16} />
+              Refresh
+            </Button>
           </div>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              label: 'Posting streak',
+              value: dashboard.streak?.current_streak || 0,
+              hint: 'days in a row',
+              icon: Flame,
+            },
+            {
+              label: 'Joined circles',
+              value: dashboard.insights?.joinedCircles || 0,
+              hint: 'communities',
+              icon: Users,
+            },
+            {
+              label: 'Your updates',
+              value: dashboard.insights?.totalPosts || 0,
+              hint: 'posts shared',
+              icon: Sparkles,
+            },
+          ].map(({ label, value, hint, icon: Icon }) => (
+            <div key={label} className="rounded-2xl bg-[rgb(var(--bg-soft))] p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[rgb(var(--muted))]">{label}</p>
+                <Icon size={18} className="text-[rgb(var(--accent))]" />
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-3xl font-bold">{value}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">{hint}</p>
+                </div>
+                {label === 'Posting streak' ? <StreakBadge badge={dashboard.streak?.badge} /> : null}
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 

@@ -5,38 +5,44 @@ import { Button } from './Button.jsx';
 import { Avatar } from './Avatar.jsx';
 import { CircleBadge } from './CircleBadge.jsx';
 
-export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
+export function Sidebar({ user, circles, onCompose, onToggleTheme, theme, mobileOpen = false, onCloseMobile }) {
   const joinedCircles = circles.filter((circle) => circle.joined);
+  const primaryNavigation = navigation.filter((item) => !['/settings', '/insights'].includes(item.path));
+  const secondaryNavigation = navigation.filter((item) => ['/settings', '/insights'].includes(item.path));
 
   return (
-    <aside className="glass-panel sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] flex-col rounded-[32px] p-5 xl:flex">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgb(var(--text))] font-display text-lg text-white dark:bg-white dark:text-slate-900">
-          SC
-        </div>
-        <div>
-          <p className="text-lg font-bold">SkillCircle</p>
-          <p className="muted-copy">Ship your progress in public.</p>
+    <>
+      {mobileOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-slate-950/35 lg:hidden"
+          onClick={onCloseMobile}
+        />
+      ) : null}
+      <aside className={`fixed inset-y-16 left-0 z-40 w-[280px] border-r bg-[rgb(var(--bg-elevated))] p-4 transition lg:sticky lg:top-20 lg:block lg:h-[calc(100vh-6rem)] lg:rounded-2xl lg:border lg:bg-transparent lg:p-0 lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+        <div className="flex h-full flex-col rounded-2xl bg-[rgb(var(--bg-elevated))] p-3 shadow-soft lg:border">
+      <div className="mb-4 flex items-center gap-3 rounded-xl px-2 py-2">
+        <Avatar user={user} size="md" />
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{user?.name}</p>
+          <p className="truncate text-xs text-[rgb(var(--muted))]">{user?.email}</p>
         </div>
       </div>
 
-      <Button className="mb-6 min-h-12 w-full justify-center" onClick={onCompose}>
+      <Button className="mb-4 min-h-11 w-full justify-center rounded-xl" onClick={onCompose}>
         <Plus size={16} />
         New update
       </Button>
 
-      <nav className="space-y-2">
-        {navigation.map(({ label, path, icon: Icon }) => (
+      <nav className="space-y-1.5">
+        {primaryNavigation.map(({ label, path, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                isActive
-                  ? 'bg-[rgb(var(--text))] text-white dark:bg-white dark:text-slate-900'
-                  : 'text-[rgb(var(--text))] hover:bg-[rgb(var(--bg-soft))]'
-              }`
+              `social-nav-link ${isActive ? 'social-nav-link-active' : ''}`
             }
+            onClick={onCloseMobile}
           >
             <Icon size={18} />
             {label}
@@ -44,45 +50,64 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme }) {
         ))}
       </nav>
 
-      <div className="mt-8">
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
+      <div className="mt-5 border-t pt-4">
+        <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.22em] text-[rgb(var(--muted))]">
+          Shortcuts
+        </p>
+        <div className="space-y-1.5">
+          {secondaryNavigation.map(({ label, path, icon: Icon }) => (
+            <NavLink
+              key={path}
+              to={path}
+              className={({ isActive }) =>
+                `social-nav-link ${isActive ? 'social-nav-link-active' : ''}`
+              }
+              onClick={onCloseMobile}
+            >
+              <Icon size={18} />
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 border-t pt-4">
+        <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.22em] text-[rgb(var(--muted))]">
           Your circles
         </p>
         <div className="space-y-2">
-          {joinedCircles.slice(0, 4).map((circle) => (
+          {joinedCircles.slice(0, 5).map((circle) => (
             <NavLink
               key={circle.id}
               to={`/circles/${circle.id}`}
-              className="block rounded-2xl border px-4 py-3 transition hover:border-[rgba(var(--accent),0.25)] hover:bg-[rgb(var(--bg-soft))]"
+              className={({ isActive }) => `block rounded-xl px-3 py-3 transition ${isActive ? 'bg-[rgb(var(--accent-soft))]' : 'hover:bg-[rgb(var(--bg-soft))]'}`}
+              onClick={onCloseMobile}
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="font-semibold">{circle.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{circle.name}</p>
+                  <p className="text-xs text-[rgb(var(--muted))]">{circle.membersCount} members</p>
+                </div>
                 <CircleBadge isPrivate={circle.is_private} />
               </div>
-              <p className="muted-copy">{circle.membersCount} members</p>
             </NavLink>
           ))}
           {!joinedCircles.length ? (
-            <div className="rounded-2xl border border-dashed px-4 py-4 text-sm text-[rgb(var(--muted))]">
-              Join a circle to make your feed feel more personal.
+            <div className="rounded-xl bg-[rgb(var(--bg-soft))] px-4 py-4 text-sm text-[rgb(var(--muted))]">
+              Join a circle to personalize your feed.
             </div>
           ) : null}
         </div>
       </div>
 
-      <div className="mt-auto rounded-[28px] bg-[rgb(var(--bg-soft))] p-4">
-        <div className="mb-4 flex items-center gap-3">
-          <Avatar user={user} />
-          <div>
-            <p className="font-semibold">{user?.name}</p>
-            <p className="muted-copy">{user?.email}</p>
-          </div>
-        </div>
-        <Button variant="ghost" className="w-full justify-between rounded-2xl" onClick={onToggleTheme}>
-          {theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+      <div className="mt-auto border-t pt-4">
+        <Button variant="ghost" className="w-full justify-between rounded-xl" onClick={onToggleTheme}>
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           {theme === 'dark' ? <SunMedium size={16} /> : <MoonStar size={16} />}
         </Button>
       </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }

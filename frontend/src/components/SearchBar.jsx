@@ -31,7 +31,7 @@ export function SearchBar() {
 
   return (
     <div className="relative w-full max-w-xl">
-      <div className="flex items-center gap-3 rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3">
+      <div className="flex items-center gap-3 rounded-full bg-[rgb(var(--bg-soft))] px-4 py-2.5">
         <Search size={16} className="text-[rgb(var(--muted))]" />
         <input
           id="global-search"
@@ -48,7 +48,7 @@ export function SearchBar() {
       </div>
 
       {open ? (
-        <div className="surface-card absolute left-0 right-0 top-[calc(100%+0.75rem)] z-40 p-3 sm:p-4">
+        <div className="surface-card absolute left-0 right-0 top-[calc(100%+0.6rem)] z-40 overflow-hidden p-3 sm:p-4">
           {searchLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((item) => (
@@ -67,7 +67,7 @@ export function SearchBar() {
                     {searchResults.users.map((user) => (
                       <button
                         key={user.id}
-                        className="w-full rounded-2xl border px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))]"
+                        className="w-full rounded-xl px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))]"
                         onClick={() => {
                           navigate(`/profile/${user.id}`);
                           setOpen(false);
@@ -91,7 +91,7 @@ export function SearchBar() {
                     {searchResults.circles.map((circle) => (
                       <button
                         key={circle.id}
-                        className="w-full rounded-2xl border px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))]"
+                        className="w-full rounded-xl px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))]"
                         onClick={() => {
                           navigate(`/circles/${circle.id}`);
                           setOpen(false);

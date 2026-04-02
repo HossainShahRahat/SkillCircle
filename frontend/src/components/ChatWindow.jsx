@@ -57,7 +57,7 @@ export function ChatWindow({
   }, [messages, searchQuery]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-[rgb(var(--bg-elevated))]">
       <div className="border-b px-5 py-4">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -70,7 +70,7 @@ export function ChatWindow({
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[rgb(var(--bg))] px-4 py-4 sm:px-5">
         {visibleMessages.length ? visibleMessages.map((message) => (
           <MessageBubble
             key={message.id}
@@ -89,14 +89,16 @@ export function ChatWindow({
         <TypingIndicator typingUsers={typingUsers} />
       </div>
 
-      <ChatComposer
-        draft={draft}
-        onDraftChange={onDraftChange}
-        onSend={onSend}
-        onTyping={onTyping}
-        searchQuery={searchQuery}
-        onSearchChange={onSearchChange}
-      />
+      <div className="border-t bg-[rgb(var(--bg-elevated))]">
+        <ChatComposer
+          draft={draft}
+          onDraftChange={onDraftChange}
+          onSend={onSend}
+          onTyping={onTyping}
+          searchQuery={searchQuery}
+          onSearchChange={onSearchChange}
+        />
+      </div>
 
       <MediaPreviewModal media={activeMedia} open={Boolean(activeMedia)} onClose={() => setActiveMedia(null)} />
     </div>

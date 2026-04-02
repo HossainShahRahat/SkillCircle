@@ -16,8 +16,8 @@ export function ReactionBar({ reactions, onReact, compact = false }) {
         return (
           <Button
             key={option.type}
-            variant={active ? 'primary' : 'ghost'}
-            className="min-h-10 rounded-full px-3 py-2 text-xs"
+            variant={active ? 'secondary' : 'ghost'}
+            className={`min-h-9 rounded-full px-3 py-2 text-xs ${active ? 'text-[rgb(var(--accent))]' : ''}`}
             onClick={() => onReact(option.type)}
           >
             <span>{option.emoji}</span>
@@ -28,4 +28,3 @@ export function ReactionBar({ reactions, onReact, compact = false }) {
     </div>
   );
 }
-

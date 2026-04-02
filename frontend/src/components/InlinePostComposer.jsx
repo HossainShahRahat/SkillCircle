@@ -21,21 +21,25 @@ export function InlinePostComposer({ user, circles, onSubmit, submitting, onOpen
   }
 
   return (
-    <form className="surface-card p-5 sm:p-6" onSubmit={handleSubmit}>
+    <form className="surface-card overflow-hidden p-0" onSubmit={handleSubmit}>
+      <div className="border-b px-5 py-4">
+        <p className="text-base font-bold">Create post</p>
+      </div>
+      <div className="p-5">
       <div className="flex items-center gap-3">
         <Avatar user={user} />
         <div>
           <p className="font-semibold">{user?.name}</p>
-          <p className="muted-copy">What moved forward today?</p>
+          <p className="muted-copy">Share progress with your circles</p>
         </div>
       </div>
 
       <div className="mt-4">
         <Textarea
           name="inline_post_content"
-          className="min-h-[110px]"
+          className="min-h-[110px] rounded-2xl border-0 bg-[rgb(var(--bg-soft))]"
           maxLength={280}
-          placeholder="Share a small win, a lesson, or one thing you are trying next."
+          placeholder={`What's on your mind, ${user?.name?.split(' ')[0] || 'there'}?`}
           value={content}
           onChange={(event) => setContent(event.target.value)}
         />
@@ -45,7 +49,7 @@ export function InlinePostComposer({ user, circles, onSubmit, submitting, onOpen
         <Input
           name="inline_post_image_url"
           label="Optional image URL"
-          placeholder="https://images.unsplash.com/..."
+          placeholder="Add a photo link"
           value={image}
           onChange={(event) => setImage(event.target.value)}
         />
@@ -58,7 +62,7 @@ export function InlinePostComposer({ user, circles, onSubmit, submitting, onOpen
             value={circleId}
             onChange={(event) => setCircleId(event.target.value)}
           >
-            <option value="">Global feed</option>
+            <option value="">Post publicly</option>
             {circles.map((circle) => (
               <option key={circle.id} value={circle.id}>
                 {circle.name}
@@ -80,10 +84,11 @@ export function InlinePostComposer({ user, circles, onSubmit, submitting, onOpen
             Use full composer
           </button>
         </div>
-        <Button disabled={submitting || !content.trim()} type="submit">
+        <Button className="rounded-xl px-5" disabled={submitting || !content.trim()} type="submit">
           <SendHorizontal size={16} />
           {submitting ? 'Posting...' : 'Post update'}
         </Button>
+      </div>
       </div>
     </form>
   );

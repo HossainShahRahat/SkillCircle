@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,27 +7,27 @@
 @layer base {
   :root {
     color-scheme: light;
-    --bg: 247 245 241;
+    --bg: 240 242 245;
     --bg-elevated: 255 255 255;
-    --bg-soft: 239 243 250;
-    --text: 23 23 23;
-    --muted: 100 116 139;
-    --border: 219 226 239;
-    --accent: 31 111 235;
-    --accent-soft: 223 235 255;
+    --bg-soft: 245 247 250;
+    --text: 28 30 33;
+    --muted: 101 103 107;
+    --border: 218 221 225;
+    --accent: 24 119 242;
+    --accent-soft: 231 243 255;
     --success: 22 163 74;
   }
 
   .dark {
     color-scheme: dark;
-    --bg: 11 15 23;
-    --bg-elevated: 17 24 39;
-    --bg-soft: 21 32 52;
-    --text: 243 244 246;
-    --muted: 148 163 184;
-    --border: 42 57 88;
-    --accent: 90 149 255;
-    --accent-soft: 20 39 71;
+    --bg: 24 25 26;
+    --bg-elevated: 36 37 38;
+    --bg-soft: 47 48 49;
+    --text: 228 230 235;
+    --muted: 176 179 184;
+    --border: 58 59 60;
+    --accent: 69 146 255;
+    --accent-soft: 39 59 86;
     --success: 74 222 128;
   }
 
@@ -37,9 +37,6 @@
 
   body {
     @apply min-h-screen bg-[rgb(var(--bg))] font-sans text-[rgb(var(--text))] antialiased;
-    background-image:
-      radial-gradient(circle at top left, rgba(255, 138, 76, 0.12), transparent 26%),
-      radial-gradient(circle at top right, rgba(31, 111, 235, 0.10), transparent 24%);
   }
 
   button,
@@ -55,15 +52,61 @@
 
 @layer components {
   .glass-panel {
-    @apply border border-white/40 bg-[rgb(var(--bg-elevated))]/90 shadow-panel backdrop-blur;
+    @apply border bg-[rgb(var(--bg-elevated))]/95 shadow-soft backdrop-blur;
   }
 
   .surface-card {
-    @apply rounded-[28px] border bg-[rgb(var(--bg-elevated))] shadow-soft;
+    @apply rounded-2xl border bg-[rgb(var(--bg-elevated))] shadow-soft;
   }
 
   .muted-copy {
     @apply text-sm text-[rgb(var(--muted))];
+  }
+
+  .social-shell {
+    @apply min-h-screen bg-[rgb(var(--bg))];
+  }
+
+  .social-topbar {
+    @apply sticky top-0 z-50 border-b bg-[rgb(var(--bg-elevated))]/95 backdrop-blur;
+  }
+
+  .social-icon-button {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgb(var(--bg-soft))] text-[rgb(var(--text))] transition hover:bg-[rgba(var(--accent),0.12)];
+  }
+
+  .social-nav-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-[rgb(var(--text))] transition hover:bg-[rgb(var(--bg-soft))];
+  }
+
+  .social-nav-link-active {
+    @apply bg-[rgb(var(--accent-soft))] text-[rgb(var(--accent))];
+  }
+
+  .social-action-button {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[rgb(var(--muted))] transition hover:bg-[rgb(var(--bg-soft))] hover:text-[rgb(var(--text))];
+  }
+
+  .social-input-shell {
+    @apply rounded-full bg-[rgb(var(--bg-soft))] px-4 py-2.5 text-sm text-[rgb(var(--text))] placeholder:text-[rgb(var(--muted))];
+  }
+
+  .messenger-chat-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--muted), 0.45) transparent;
+  }
+
+  .messenger-chat-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .messenger-chat-scroll::-webkit-scrollbar-thumb {
+    background: rgba(var(--muted), 0.4);
+    border-radius: 999px;
+  }
+
+  .messenger-chat-scroll::-webkit-scrollbar-track {
+    background: transparent;
   }
 }
 

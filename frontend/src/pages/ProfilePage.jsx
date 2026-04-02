@@ -113,24 +113,52 @@ export function ProfilePage() {
     }
   }
 
+  const visibleSkills = form.skills
+    .split(',')
+    .map((skill) => skill.trim())
+    .filter(Boolean);
+
   return (
     <div className="space-y-5">
-      <Card className="p-6 md:p-8">
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-[32px] bg-[rgb(var(--bg-soft))] p-6">
-            {loading ? <div className="h-16 w-16 animate-pulse rounded-2xl bg-[rgb(var(--bg-elevated))]" /> : <Avatar user={{ ...profileUser, avatar_url: form.avatar_url || profileUser?.avatar_url }} size="lg" />}
-            <h1 className="mt-5 text-3xl font-bold">{form.name || 'Your profile'}</h1>
-            <p className="mt-3 text-sm leading-7 text-[rgb(var(--muted))]">
+      <Card className="overflow-hidden p-0">
+        <div className="h-40 bg-gradient-to-r from-[rgb(var(--accent))] via-sky-500 to-cyan-400 sm:h-44" />
+        <div className="grid gap-6 px-4 pb-5 pt-0 sm:px-6 md:px-8 lg:grid-cols-[minmax(320px,0.86fr)_minmax(0,1.14fr)] lg:gap-8 lg:pb-8">
+          <div className="rounded-[28px] bg-[rgb(var(--bg-soft))] p-5 sm:p-6">
+            <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end">
+              {loading ? (
+                <div className="h-24 w-24 animate-pulse rounded-full border-4 border-[rgb(var(--bg-elevated))] bg-[rgb(var(--bg-elevated))]" />
+              ) : (
+                <div className="w-fit rounded-full border-4 border-[rgb(var(--bg-elevated))]">
+                  <Avatar
+                    user={{ ...profileUser, avatar_url: form.avatar_url || profileUser?.avatar_url }}
+                    size="lg"
+                  />
+                </div>
+              )}
+              <div className="pb-1 sm:pb-3">
+                <h1 className="text-3xl font-bold leading-tight">{form.name || 'Your profile'}</h1>
+                <p className="mt-1 text-sm text-[rgb(var(--muted))]">
+                  {stats.circlesJoined} circles | {stats.totalPosts} posts
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-5 text-sm leading-7 text-[rgb(var(--muted))]">
               {form.bio || 'Your profile is where your learning identity becomes legible. Add a grounded bio and a few skills people can recognize instantly.'}
             </p>
+
             <div className="mt-5 flex flex-wrap gap-2">
-              {form.skills.split(',').map((skill) => skill.trim()).filter(Boolean).map((skill) => (
-                <span key={skill} className="rounded-full bg-[rgb(var(--accent-soft))] px-3 py-2 text-sm font-semibold">
+              {visibleSkills.map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded-full bg-[rgb(var(--bg-elevated))] px-3 py-2 text-sm font-semibold text-[rgb(var(--accent))]"
+                >
                   {skill}
                 </span>
               ))}
             </div>
-            <div className="mt-6 grid grid-cols-3 gap-3">
+
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 [stats.totalPosts, 'Posts'],
                 [stats.totalLikesReceived, 'Likes received'],
@@ -142,18 +170,23 @@ export function ProfilePage() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl bg-[rgb(var(--bg-elevated))] p-4">
                 <div className="flex items-center gap-2 text-[rgb(var(--accent))]">
                   <Flame size={16} />
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">Consistency</span>
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">
+                    Consistency
+                  </span>
                 </div>
                 <p className="mt-2 font-semibold">Show up daily, even with a tiny win.</p>
               </div>
               <div className="rounded-2xl bg-[rgb(var(--bg-elevated))] p-4">
                 <div className="flex items-center gap-2 text-[rgb(var(--accent))]">
                   <Users size={16} />
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">Active circles</span>
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">
+                    Active circles
+                  </span>
                 </div>
                 <p className="mt-2 font-semibold">{stats.circlesJoined || 0} circles shaping your current momentum.</p>
               </div>
@@ -161,69 +194,80 @@ export function ProfilePage() {
           </div>
 
           {isOwnProfile ? (
-            <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                name="profile_name"
-                label="Name"
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-              />
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-[rgb(var(--text))]">Avatar image</span>
-                <label
-                  htmlFor="avatar-upload"
-                  className="flex min-h-[52px] cursor-pointer items-center justify-between rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3 text-sm text-[rgb(var(--text))] transition hover:bg-[rgb(var(--bg-soft))]"
-                >
-                  <span className="truncate">
-                    {uploadingAvatar ? 'Uploading avatar...' : 'Choose an image to upload'}
-                  </span>
-                  <span className="inline-flex items-center gap-2 font-semibold text-[rgb(var(--muted))]">
-                    <ImageUp size={16} />
-                    Browse
-                  </span>
-                </label>
-                <input
-                  id="avatar-upload"
-                  name="avatar_upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                />
-                <p className="text-sm text-[rgb(var(--muted))]">
-                  JPG, PNG, GIF, or WebP. Upload first, then save your profile.
-                </p>
-              </label>
-            </div>
-            <Textarea
-              name="profile_bio"
-              label="Bio"
-              value={form.bio}
-              onChange={(event) => setForm({ ...form, bio: event.target.value })}
-            />
-            <Input
-              name="profile_skills"
-              label="Skills"
-              placeholder="React, UI Design, TypeScript"
-              value={form.skills}
-              onChange={(event) => setForm({ ...form, skills: event.target.value })}
-            />
-            <div className="flex items-center justify-between gap-3">
+            <form className="min-w-0 space-y-4 px-1 pt-6" onSubmit={handleSubmit}>
               <div>
-                <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
-                <p className={`text-sm ${uploadMessage && uploadMessage.toLowerCase().includes('unable') ? 'text-rose-500' : 'text-[rgb(var(--muted))]'}`}>
-                  {uploadMessage}
-                </p>
+                <p className="text-lg font-bold">Edit profile</p>
+                <p className="muted-copy mt-1 max-w-xl">Keep your public identity clean, recognizable, and current.</p>
               </div>
-              <Button disabled={saving}>
-                <Save size={16} />
-                {saving ? 'Saving...' : 'Save profile'}
-              </Button>
-            </div>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <Input
+                  name="profile_name"
+                  label="Name"
+                  value={form.name}
+                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                />
+
+                <div className="flex min-w-0 flex-col gap-2">
+                  <span className="text-sm font-semibold text-[rgb(var(--text))]">Avatar image</span>
+                  <label
+                    htmlFor="avatar-upload"
+                    className="flex min-h-[54px] cursor-pointer items-center justify-between gap-3 rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3 text-sm text-[rgb(var(--text))] transition hover:bg-[rgb(var(--bg-soft))]"
+                  >
+                    <span className="min-w-0 truncate">
+                      {uploadingAvatar ? 'Uploading avatar...' : 'Choose an image to upload'}
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-2 font-semibold text-[rgb(var(--muted))]">
+                      <ImageUp size={16} />
+                      Browse
+                    </span>
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    name="avatar_upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                  <p className="text-sm leading-6 text-[rgb(var(--muted))]">
+                    JPG, PNG, GIF, or WebP. Upload first, then save your profile.
+                  </p>
+                </div>
+              </div>
+
+              <Textarea
+                name="profile_bio"
+                label="Bio"
+                value={form.bio}
+                onChange={(event) => setForm({ ...form, bio: event.target.value })}
+              />
+
+              <Input
+                name="profile_skills"
+                label="Skills"
+                placeholder="React, UI Design, TypeScript"
+                value={form.skills}
+                onChange={(event) => setForm({ ...form, skills: event.target.value })}
+              />
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>
+                  <p
+                    className={`text-sm ${uploadMessage && uploadMessage.toLowerCase().includes('unable') ? 'text-rose-500' : 'text-[rgb(var(--muted))]'}`}
+                  >
+                    {uploadMessage}
+                  </p>
+                </div>
+                <Button disabled={saving} className="w-full sm:w-auto">
+                  <Save size={16} />
+                  {saving ? 'Saving...' : 'Save profile'}
+                </Button>
+              </div>
             </form>
           ) : (
-            <div className="rounded-[28px] border bg-[rgb(var(--bg-elevated))] p-6">
+            <div className="rounded-2xl border bg-[rgb(var(--bg-elevated))] p-6">
               <p className="text-lg font-bold">Profile snapshot</p>
               <p className="mt-3 text-sm leading-7 text-[rgb(var(--muted))]">
                 This view is read-only. Search helps you quickly discover who is learning what across the platform.
@@ -251,7 +295,7 @@ export function ProfilePage() {
         {myPosts.length ? (
           <div className="space-y-4">
             {myPosts.map((post) => (
-              <div key={post.id} className="rounded-[24px] border bg-[rgb(var(--bg-soft))] p-5">
+              <div key={post.id} className="rounded-2xl bg-[rgb(var(--bg-soft))] p-5">
                 <p className="text-sm leading-7">{post.content}</p>
                 <div className="mt-3 flex gap-4 text-sm text-[rgb(var(--muted))]">
                   <span>{post.likesCount} likes</span>
