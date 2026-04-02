@@ -1,8 +1,9 @@
-import { Home, LogOut, Menu, MessageCircle, MoonStar, Plus, Search, Settings2, SunMedium, UserRound } from 'lucide-react';
+import { Home, LogOut, Menu, MoonStar, Plus, Search, Settings2, SunMedium, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Avatar } from './Avatar.jsx';
 import { Button } from './Button.jsx';
+import { MessageInboxButton } from './MessageInboxButton.jsx';
 import { NotificationBell } from './NotificationBell.jsx';
 import { SearchBar } from './SearchBar.jsx';
 import { useAuthStore } from '../store/authStore.js';
@@ -71,12 +72,7 @@ export function TopNav({ user, theme, onToggleTheme, onCompose, onToggleMobileMe
             >
               <Home size={18} />
             </NavLink>
-            <NavLink
-              to="/messages"
-              className={({ isActive }) => `social-icon-button ${isActive ? 'bg-[rgb(var(--accent-soft))] text-[rgb(var(--accent))]' : ''}`}
-            >
-              <MessageCircle size={18} />
-            </NavLink>
+            <MessageInboxButton />
           </div>
 
           <button
