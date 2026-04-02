@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Users, Layers3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { CircleBadge } from './CircleBadge.jsx';
 
 export function SearchBar() {
+  const containerRef = useRef(null);
   const navigate = useNavigate();
   const search = useAppStore((state) => state.search);
   const clearSearch = useAppStore((state) => state.clearSearch);
@@ -27,10 +28,31 @@ export function SearchBar() {
     return () => clearTimeout(timer);
   }, [query, search, clearSearch]);
 
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!containerRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   const hasResults = searchResults.users.length || searchResults.circles.length;
 
   return (
-    <div className="relative w-full max-w-xl">
+    <div ref={containerRef} className="relative w-full max-w-xl">
       <div className="flex items-center gap-3 rounded-full bg-[rgb(var(--bg-soft))] px-4 py-2.5">
         <Search size={16} className="text-[rgb(var(--muted))]" />
         <input
@@ -67,9 +89,12 @@ export function SearchBar() {
                     {searchResults.users.map((user) => (
                       <button
                         key={user.id}
+                        type="button"
                         className="w-full rounded-xl px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))]"
                         onClick={() => {
                           navigate(`/profile/${user.id}`);
+                          setQuery('');
+                          clearSearch();
                           setOpen(false);
                         }}
                       >
@@ -91,9 +116,12 @@ export function SearchBar() {
                     {searchResults.circles.map((circle) => (
                       <button
                         key={circle.id}
+                        type="button"
                         className="w-full rounded-xl px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))]"
                         onClick={() => {
                           navigate(`/circles/${circle.id}`);
+                          setQuery('');
+                          clearSearch();
                           setOpen(false);
                         }}
                       >

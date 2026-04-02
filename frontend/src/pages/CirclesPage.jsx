@@ -1,6 +1,6 @@
 import { Compass, Plus, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { CircleBadge } from '../components/CircleBadge.jsx';
@@ -8,6 +8,7 @@ import { EmptyState } from '../components/EmptyState.jsx';
 import { useAppStore } from '../store/appStore.js';
 
 export function CirclesPage() {
+  const navigate = useNavigate();
   const circles = useAppStore((state) => state.circles);
   const joinCircle = useAppStore((state) => state.joinCircle);
   const setModalOpen = useAppStore((state) => state.setModalOpen);
@@ -72,9 +73,9 @@ export function CirclesPage() {
                 <span>{circle.membersCount} members</span>
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
-                <Link to={`/circles/${circle.id}`}>
-                  <Button variant="secondary">Open circle</Button>
-                </Link>
+                <Button variant="secondary" onClick={() => navigate(`/circles/${circle.id}`)}>
+                  Open circle
+                </Button>
                 {!circle.joined ? (
                   <Button
                     onClick={() => {

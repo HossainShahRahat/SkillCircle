@@ -26,18 +26,19 @@ function ToggleRow({ label, description, checked, onChange }) {
 }
 
 export function SettingsPage() {
-  const settings = useAppStore((state) => state.settings);
-  const loadingSettings = useAppStore((state) => state.loadingSettings);
-  const loadSettings = useAppStore((state) => state.loadSettings);
-  const updateSettings = useAppStore((state) => state.updateSettings);
-  const [form, setForm] = useState({
+  const defaultForm = {
     post_visibility: 'public',
     notify_likes: true,
     notify_comments: true,
     notify_mentions: true,
     notify_joins: true,
     weekly_digest: false,
-  });
+  };
+  const settings = useAppStore((state) => state.settings);
+  const loadingSettings = useAppStore((state) => state.loadingSettings);
+  const loadSettings = useAppStore((state) => state.loadSettings);
+  const updateSettings = useAppStore((state) => state.updateSettings);
+  const [form, setForm] = useState(defaultForm);
 
   useEffect(() => {
     loadSettings();
@@ -45,7 +46,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (settings) {
-      setForm(settings);
+      setForm({ ...defaultForm, ...settings });
     }
   }, [settings]);
 
@@ -125,8 +126,8 @@ export function SettingsPage() {
           />
         </Card>
 
-        <div className="xl:col-span-2 flex justify-end">
-          <Button disabled={loadingSettings}>
+        <div className="flex justify-end xl:col-span-2">
+          <Button type="submit" disabled={loadingSettings}>
             <Save size={16} />
             {loadingSettings ? 'Saving...' : 'Save settings'}
           </Button>

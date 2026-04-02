@@ -41,6 +41,11 @@ export function DirectMessagesPage() {
   }, [activeDirectChatId, loadDirectMessages, markDirectMessages]);
 
   useEffect(() => {
+    setDraft('');
+    setSearchQuery('');
+  }, [activeDirectChatId]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (!userSearch.trim()) {
         clearSearch();
@@ -91,6 +96,8 @@ export function DirectMessagesPage() {
           onStartChat={async (participantId) => {
             const chat = await createDirectChat(participantId);
             setActiveDirectChat(chat.id);
+            setUserSearch('');
+            clearSearch();
           }}
         />
       </div>

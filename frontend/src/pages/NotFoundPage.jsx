@@ -1,5 +1,5 @@
 import { ArrowLeft, Compass } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { useAuthStore } from '../store/authStore.js';
@@ -35,9 +35,9 @@ export function NotFoundPage() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to={homePath}>
-                <Button className="w-full sm:w-auto">Go to {token ? 'dashboard' : 'sign in'}</Button>
-              </Link>
+              <Button className="w-full sm:w-auto" onClick={() => navigate(homePath)}>
+                Go to {token ? 'dashboard' : 'sign in'}
+              </Button>
               <Button
                 variant="ghost"
                 className="w-full sm:w-auto"

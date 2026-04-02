@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
@@ -10,10 +10,12 @@ function notificationMessage(notification) {
   if (notification.type === 'like') return `${actor} liked your post`;
   if (notification.type === 'comment') return `${actor} commented on your post`;
   if (notification.type === 'mention') return `${actor} mentioned you in a comment`;
+  if (notification.type === 'message') return `${actor} sent you a message`;
   return `${actor} joined your circle`;
 }
 
 export function NotificationBell() {
+  const containerRef = useRef(null);
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const notifications = useAppStore((state) => state.notifications);
@@ -27,10 +29,31 @@ export function NotificationBell() {
     loadNotifications();
   }, [loadNotifications, token]);
 
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!containerRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <Button
         variant="ghost"
         className="relative h-10 w-10 rounded-full bg-[rgb(var(--bg-soft))] p-0"
@@ -71,6 +94,7 @@ export function NotificationBell() {
               {notifications.map((notification) => (
                 <button
                   key={notification.id}
+                  type="button"
                   className={`w-full rounded-xl px-4 py-3 text-left transition hover:bg-[rgb(var(--bg-soft))] ${notification.is_read ? 'opacity-70' : 'bg-[rgb(var(--accent-soft))]/40'}`}
                   onClick={async () => {
                     if (!notification.is_read) {
@@ -79,6 +103,10 @@ export function NotificationBell() {
                     setOpen(false);
                     if (notification.circle_id) {
                       navigate(`/circles/${notification.circle_id}`);
+                      return;
+                    }
+                    if (notification.type === 'message') {
+                      navigate('/messages');
                       return;
                     }
                     navigate('/');
