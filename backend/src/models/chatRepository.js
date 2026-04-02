@@ -353,6 +353,11 @@ class MemoryChatRepository {
     const normalized = query.toLowerCase();
     return messages.filter((message) => message.content.toLowerCase().includes(normalized));
   }
+
+  async canAccessDirectChat(chatId, userId) {
+    const chat = this.directChats.find((entry) => entry.id === chatId);
+    return Boolean(chat && [chat.user1_id, chat.user2_id].includes(userId));
+  }
 }
 
 class SupabaseChatRepository {
@@ -897,6 +902,17 @@ class SupabaseChatRepository {
     const messages = await this.listDirectMessages(chatId, userId);
     const normalized = query.toLowerCase();
     return messages.filter((message) => message.content.toLowerCase().includes(normalized));
+  }
+
+  async canAccessDirectChat(chatId, userId) {
+    const { data, error } = await this.supabase
+      .from('direct_chats')
+      .select('id')
+      .eq('id', chatId)
+      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+      .maybeSingle();
+    if (error) throw error;
+    return Boolean(data);
   }
 }
 

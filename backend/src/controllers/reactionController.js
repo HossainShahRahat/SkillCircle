@@ -31,9 +31,10 @@ export async function toggleReaction(req, res, next) {
       circleId = post?.circle_id || null;
     }
 
-    emitGlobal('reaction_updated', { referenceType, referenceId, reactions });
     if (circleId) {
       emitToCircle(circleId, 'reaction_updated', { referenceType, referenceId, reactions });
+    } else {
+      emitGlobal('reaction_updated', { referenceType, referenceId, reactions });
     }
 
     res.json({ reactions });
@@ -41,4 +42,3 @@ export async function toggleReaction(req, res, next) {
     next(error);
   }
 }
-

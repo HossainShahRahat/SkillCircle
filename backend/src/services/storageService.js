@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { logger } from './logger.js';
+import crypto from 'crypto';
 
 function cloudinaryConfigured() {
   return Boolean(
@@ -12,14 +13,23 @@ function cloudinaryConfigured() {
 async function uploadToCloudinary({ dataUrl, fileName, contentType }) {
   const endpoint = `https://api.cloudinary.com/v1_1/${config.cloudinaryCloudName}/auto/upload`;
   const body = new URLSearchParams();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = 'skillcircle/chat';
+  const publicId = `${Date.now().toString(36)}-${(fileName || 'upload').replace(/\.[^.]+$/, '')}`;
   body.set('file', dataUrl);
   body.set('api_key', config.cloudinaryApiKey);
+  body.set('timestamp', String(timestamp));
   if (config.cloudinaryUploadPreset) {
     body.set('upload_preset', config.cloudinaryUploadPreset);
   }
-  body.set('folder', 'skillcircle/chat');
-  body.set('public_id', `${Date.now().toString(36)}-${(fileName || 'upload').replace(/\.[^.]+$/, '')}`);
+  body.set('folder', folder);
+  body.set('public_id', publicId);
   body.set('resource_type', 'auto');
+
+  if (!config.cloudinaryUploadPreset) {
+    const signatureBase = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}${config.cloudinaryApiSecret}`;
+    body.set('signature', crypto.createHash('sha1').update(signatureBase).digest('hex'));
+  }
 
   const response = await fetch(endpoint, {
     method: 'POST',

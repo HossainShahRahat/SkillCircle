@@ -54,9 +54,10 @@ export async function updatePost(req, res, next) {
     }
     const existing = await ensureCanManagePost(req.params.postId, req.user.id);
     const post = await repository.updatePost(req.params.postId, req.user.id, content.trim());
-    emitGlobal('post_updated', { post });
     if (existing.circle_id) {
       emitToCircle(existing.circle_id, 'post_updated', { post });
+    } else {
+      emitGlobal('post_updated', { post });
     }
     res.json({ post });
   } catch (error) {
@@ -68,9 +69,10 @@ export async function deletePost(req, res, next) {
   try {
     const existing = await ensureCanManagePost(req.params.postId, req.user.id);
     const deleted = await repository.softDeletePost(req.params.postId);
-    emitGlobal('post_deleted', { postId: req.params.postId });
     if (existing.circle_id) {
       emitToCircle(existing.circle_id, 'post_deleted', { postId: req.params.postId });
+    } else {
+      emitGlobal('post_deleted', { postId: req.params.postId });
     }
     res.json({ deleted });
   } catch (error) {
@@ -108,9 +110,10 @@ export async function updateComment(req, res, next) {
         }),
     );
 
-    emitGlobal('comment_updated', { postId: comment.post_id, comment: updatedComment });
     if (post?.circle_id) {
       emitToCircle(post.circle_id, 'comment_updated', { postId: comment.post_id, comment: updatedComment });
+    } else {
+      emitGlobal('comment_updated', { postId: comment.post_id, comment: updatedComment });
     }
     res.json({ comment: updatedComment });
   } catch (error) {
@@ -122,9 +125,10 @@ export async function deleteComment(req, res, next) {
   try {
     const { comment, post } = await ensureCanManageComment(req.params.commentId, req.user.id);
     const deleted = await repository.softDeleteComment(req.params.commentId);
-    emitGlobal('comment_deleted', { postId: comment.post_id, commentId: req.params.commentId });
     if (post?.circle_id) {
       emitToCircle(post.circle_id, 'comment_deleted', { postId: comment.post_id, commentId: req.params.commentId });
+    } else {
+      emitGlobal('comment_deleted', { postId: comment.post_id, commentId: req.params.commentId });
     }
     res.json({ deleted });
   } catch (error) {

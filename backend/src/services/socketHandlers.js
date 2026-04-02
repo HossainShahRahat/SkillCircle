@@ -1,6 +1,21 @@
+import { chatRepository } from '../models/chatRepository.js';
+import { repository } from '../models/repository.js';
 import { logger } from './logger.js';
 
 const typingRateLimits = new Map();
+
+async function canJoinRoom(scope, targetId, userId) {
+  if (scope === 'circle') {
+    const circle = await repository.getCircle(targetId, userId);
+    return Boolean(circle?.joined);
+  }
+
+  if (scope === 'direct') {
+    return Boolean(await chatRepository.canAccessDirectChat(targetId, userId));
+  }
+
+  return false;
+}
 
 function canEmitTyping(socketId, targetId, isTyping) {
   const key = `${socketId}:${targetId}:${isTyping ? 'start' : 'stop'}`;
@@ -19,8 +34,13 @@ function registerNamespaceHandlers(namespace, { scope, roomPrefix }) {
     socket.join(`user:${socket.user.id}`);
     logger.info('Socket connected', { scope, userId: socket.user.id, socketId: socket.id });
 
-    socket.on('join_room', (targetId) => {
+    socket.on('join_room', async (targetId) => {
       if (!targetId) return;
+      const allowed = await canJoinRoom(scope, targetId, socket.user.id).catch(() => false);
+      if (!allowed) {
+        logger.warn('Socket room join denied', { scope, targetId, userId: socket.user.id, socketId: socket.id });
+        return;
+      }
       socket.join(`${roomPrefix}:${targetId}`);
     });
 
@@ -29,8 +49,10 @@ function registerNamespaceHandlers(namespace, { scope, roomPrefix }) {
       socket.leave(`${roomPrefix}:${targetId}`);
     });
 
-    socket.on('typing', ({ targetId, isTyping }) => {
+    socket.on('typing', async ({ targetId, isTyping }) => {
       if (!targetId) return;
+      const allowed = await canJoinRoom(scope, targetId, socket.user.id).catch(() => false);
+      if (!allowed) return;
       if (!canEmitTyping(socket.id, `${scope}:${targetId}`, Boolean(isTyping))) return;
       const payload = {
         scope,
@@ -52,10 +74,14 @@ export function registerRootSocketHandlers(io) {
   io.on('connection', (socket) => {
     socket.join(`user:${socket.user.id}`);
 
-    socket.on('join_circle_room', (circleId) => {
-      if (circleId) {
-        socket.join(`circle:${circleId}`);
+    socket.on('join_circle_room', async (circleId) => {
+      if (!circleId) return;
+      const allowed = await canJoinRoom('circle', circleId, socket.user.id).catch(() => false);
+      if (!allowed) {
+        logger.warn('Socket room join denied', { scope: 'circle', targetId: circleId, userId: socket.user.id, socketId: socket.id });
+        return;
       }
+      socket.join(`circle:${circleId}`);
     });
 
     socket.on('leave_circle_room', (circleId) => {
@@ -64,10 +90,14 @@ export function registerRootSocketHandlers(io) {
       }
     });
 
-    socket.on('join_direct_room', (chatId) => {
-      if (chatId) {
-        socket.join(`direct:${chatId}`);
+    socket.on('join_direct_room', async (chatId) => {
+      if (!chatId) return;
+      const allowed = await canJoinRoom('direct', chatId, socket.user.id).catch(() => false);
+      if (!allowed) {
+        logger.warn('Socket room join denied', { scope: 'direct', targetId: chatId, userId: socket.user.id, socketId: socket.id });
+        return;
       }
+      socket.join(`direct:${chatId}`);
     });
 
     socket.on('leave_direct_room', (chatId) => {
@@ -76,8 +106,10 @@ export function registerRootSocketHandlers(io) {
       }
     });
 
-    socket.on('typing', ({ scope, targetId, isTyping }) => {
+    socket.on('typing', async ({ scope, targetId, isTyping }) => {
       if (!scope || !targetId) return;
+      const allowed = await canJoinRoom(scope, targetId, socket.user.id).catch(() => false);
+      if (!allowed) return;
       if (!canEmitTyping(socket.id, `${scope}:${targetId}`, Boolean(isTyping))) return;
       const room = scope === 'direct' ? `direct:${targetId}` : `circle:${targetId}`;
       const payload = {

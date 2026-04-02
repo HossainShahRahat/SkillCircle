@@ -9,6 +9,32 @@ function badRequest(message) {
   return error;
 }
 
+async function ensureJoinedCircle(circleId, userId) {
+  if (!circleId) return null;
+  const circle = await repository.getCircle(circleId, userId);
+  if (!circle) {
+    const error = new Error('Circle not found.');
+    error.status = 404;
+    throw error;
+  }
+  if (!circle.joined) {
+    const error = new Error('Join the circle before posting in it.');
+    error.status = 403;
+    throw error;
+  }
+  return circle;
+}
+
+async function ensureInteractablePost(postId, userId) {
+  const post = await repository.getPostById(postId, userId);
+  if (!post) {
+    const error = new Error('Post not found.');
+    error.status = 404;
+    throw error;
+  }
+  return post;
+}
+
 async function notifyIfEnabled(userId, key, buildNotification, event = 'new_notification') {
   const settings = await repository.getUserSettings?.(userId);
   if (settings && settings[key] === false) {
@@ -35,6 +61,8 @@ export async function createPost(req, res, next) {
       throw badRequest('Post content is required.');
     }
 
+    await ensureJoinedCircle(circleId || null, req.user.id);
+
     const imageUrl = await createImageUrl(image);
     const post = await repository.createPost({
       userId: req.user.id,
@@ -43,9 +71,10 @@ export async function createPost(req, res, next) {
       circleId: circleId || null,
     });
 
-    emitGlobal('new_post', { post });
     if (post.circle_id) {
       emitToCircle(post.circle_id, 'new_post', { post });
+    } else {
+      emitGlobal('new_post', { post });
     }
 
     const [dashboard, analytics] = await Promise.all([
@@ -65,6 +94,7 @@ export async function createPost(req, res, next) {
 
 export async function toggleLike(req, res, next) {
   try {
+    await ensureInteractablePost(req.params.postId, req.user.id);
     const result = await repository.toggleLike(req.params.postId, req.user.id);
     if (result.notificationTargetUserId) {
       await notifyIfEnabled(result.notificationTargetUserId, 'notify_likes', () => repository.createNotification({
@@ -87,7 +117,7 @@ export async function addComment(req, res, next) {
       throw badRequest('Comment content is required.');
     }
 
-    const post = await repository.getPostById(req.params.postId, req.user.id);
+    const post = await ensureInteractablePost(req.params.postId, req.user.id);
     const activeMembers = post?.circle_id
       ? await repository.listCircleMembers(post.circle_id, req.user.id)
       : [];
@@ -117,9 +147,10 @@ export async function addComment(req, res, next) {
             triggeredBy: req.user.id,
           }), 'new_mention')),
     );
-    emitGlobal('new_comment', { postId: req.params.postId, comment });
     if (post?.circle_id) {
       emitToCircle(post.circle_id, 'new_comment', { postId: req.params.postId, comment });
+    } else {
+      emitGlobal('new_comment', { postId: req.params.postId, comment });
     }
     res.status(201).json({ comment });
   } catch (error) {

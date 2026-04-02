@@ -31,3 +31,7 @@ export const config = {
 export const isSupabaseConfigured = Boolean(
   config.supabaseUrl && config.supabaseServiceRoleKey,
 );
+
+if (config.nodeEnv === 'production' && config.jwtSecret === 'skillcircle-dev-secret') {
+  throw new Error('JWT_SECRET must be configured in production.');
+}
