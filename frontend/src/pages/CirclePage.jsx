@@ -318,6 +318,7 @@ export function CirclePage() {
             <CircleChatPanel
               messages={messages}
               currentUser={user}
+              activeMembers={activeCircle.members || []}
               typingUsers={typingUsers}
               isOnline={socketConnected}
               draft={chatDraft}

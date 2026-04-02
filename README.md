@@ -10,7 +10,20 @@ The app combines:
 - direct messaging with a floating Messenger-style dock
 - profiles, notifications, settings, and analytics
 
-## What Is New
+## Why SkillCircle
+
+SkillCircle is built to solve the problem of noisy social platforms by creating a higher-signal environment focused on learning progress, accountability, and smaller communities.
+
+## SaaS Vision
+
+SkillCircle is designed to evolve into a scalable SaaS platform for:
+
+- learning communities
+- cohort-based education
+- accountability groups
+- focused creator or mentor-led spaces
+
+## What's New
 
 This version includes a refreshed social UI and a more complete app shell:
 
@@ -68,6 +81,14 @@ This version includes a refreshed social UI and a more complete app shell:
 - live typing state
 - live reaction and status updates
 
+## System Status
+
+Most core flows are working end to end, but some advanced areas are still iterative:
+
+- analytics are functional but still evolving
+- offline message sync is implemented but should be treated as an active feature area
+- real-time reactions and live updates are implemented, though demo-mode behavior may differ from fully persisted environments
+
 ## Tech Stack
 
 ### Frontend
@@ -97,6 +118,43 @@ This version includes a refreshed social UI and a more complete app shell:
 - simulated storage by default
 - optional Cloudinary upload support
 - optional R2-style config surface in the backend
+
+## Architecture Overview
+
+- the React frontend handles routing, UI rendering, optimistic updates, and authenticated API access
+- the Express backend handles REST endpoints, validation, auth checks, and repository-backed data access
+- Socket.IO handles real-time delivery for posts, comments, notifications, typing, and chat events
+- Zustand manages client-side auth state, feed state, chat state, notifications, and UI state
+- Supabase PostgreSQL is used for persistence when configured, with an in-memory fallback for local demo mode
+
+## Authentication
+
+- JWT-based authentication
+- protected frontend routes using router guards
+- protected backend routes using auth middleware
+- session restore on app bootstrap through `refreshUser()`
+- future improvements can include refresh tokens and more advanced session management
+
+## Error Handling
+
+- centralized backend error-handling middleware
+- frontend auth failures are routed through a shared unauthorized handler
+- loading and empty states are present across major pages
+- the app can fall back to in-memory mode when Supabase is not configured
+
+## Performance Considerations
+
+- route-level lazy loading is already used for major frontend pages
+- Zustand keeps state updates lightweight without a heavy client-state layer
+- Socket.IO events are scoped to the real-time features that need them
+- larger-feed optimization and pagination are planned next
+
+## UI/UX Approach
+
+- Facebook-inspired layout for familiarity
+- emphasis on content-first spacing and quick interaction
+- responsive behavior across desktop and mobile
+- floating direct messaging for faster multitasking on larger screens
 
 ## Project Structure
 
@@ -375,6 +433,12 @@ npm run build
 ```bash
 npm test --workspace backend
 ```
+
+## Testing
+
+- backend smoke tests are included today
+- frontend is currently verified through build checks and manual interaction testing
+- future work includes stronger integration coverage and end-to-end UI tests
 
 ### Individual Builds
 

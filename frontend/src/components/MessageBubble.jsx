@@ -1,6 +1,7 @@
 import { Avatar } from './Avatar.jsx';
 import { ChatMediaPreview } from './ChatMediaPreview.jsx';
 import { MessageStatusIcon } from './MessageStatusIcon.jsx';
+import { UserHoverCard } from './UserHoverCard.jsx';
 import { formatRelativeTime } from '../utils/time.js';
 
 function formatTime(value) {
@@ -18,7 +19,7 @@ function highlight(text, query) {
   ));
 }
 
-const quickReactions = ['❤️', '🔥', '👏', '👍'];
+const quickReactions = ['❤', '🔥', '👏', '👍'];
 
 export function MessageBubble({
   message,
@@ -39,7 +40,15 @@ export function MessageBubble({
               isOwn ? 'bg-[rgb(var(--accent))] text-white' : 'border bg-[rgb(var(--bg-elevated))]'
             }`}
           >
-            {!isOwn ? <p className="mb-1 text-xs font-semibold">{message.author?.name}</p> : null}
+            {!isOwn ? (
+              message.author?.id ? (
+                <div className="mb-1">
+                  <UserHoverCard user={message.author}>
+                    <span className="text-xs font-semibold">{message.author?.name}</span>
+                  </UserHoverCard>
+                </div>
+              ) : <p className="mb-1 text-xs font-semibold">{message.author?.name}</p>
+            ) : null}
             {message.content ? <p className="text-sm leading-6">{highlight(message.content, searchQuery)}</p> : null}
             <ChatMediaPreview message={message} onOpenMedia={onOpenMedia} />
             <div className={`mt-2 flex items-center gap-2 text-[11px] ${isOwn ? 'text-white/70 dark:text-slate-500' : 'text-[rgb(var(--muted))]'}`}>

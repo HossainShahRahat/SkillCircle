@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { normalizeMentionName } from '../utils/mentions.js';
+import { UserHoverCard } from './UserHoverCard.jsx';
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -31,13 +31,11 @@ export function MentionText({ content, mentions = [] }) {
         }
 
         return (
-          <Link
-            key={`${mention.id}-${index}`}
-            to={`/profile/${mention.id}`}
-            className="font-semibold text-[rgb(var(--accent))] transition hover:underline"
-          >
-            {part}
-          </Link>
+          <UserHoverCard key={`${mention.id}-${index}`} user={mention}>
+            <span className="font-semibold text-[rgb(var(--accent))] transition hover:underline">
+              {part}
+            </span>
+          </UserHoverCard>
         );
       })}
     </span>

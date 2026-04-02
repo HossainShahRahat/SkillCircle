@@ -148,7 +148,7 @@ export function AppLayout() {
         onToggleMobileMenu={() => setMobileNavOpen((open) => !open)}
       />
 
-      <div className="mx-auto flex max-w-[1440px] gap-4 px-3 py-4 pb-24 sm:px-4 lg:px-6 lg:pb-6">
+      <div className="mx-auto flex max-w-[1760px] gap-5 px-3 py-4 pb-24 sm:px-4 xl:px-6 2xl:px-8 lg:pb-6">
         <Sidebar
           user={user}
           circles={circles}
@@ -161,7 +161,7 @@ export function AppLayout() {
 
         <div className="min-w-0 flex-1">
           <FeatureTips user={user} onCompose={() => setModalOpen(true)} />
-          <main className="mx-auto mt-4 min-w-0 max-w-[680px]">
+          <main className="mx-auto mt-4 min-w-0 w-full max-w-[980px] 2xl:max-w-[1080px]">
             <Outlet />
           </main>
         </div>

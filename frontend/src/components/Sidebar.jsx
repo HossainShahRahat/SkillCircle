@@ -1,11 +1,13 @@
-import { MoonStar, SunMedium, Plus } from 'lucide-react';
+import { LogOut, MoonStar, SunMedium, Plus } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { navigation } from '../data/navigation.js';
 import { Button } from './Button.jsx';
 import { Avatar } from './Avatar.jsx';
 import { CircleBadge } from './CircleBadge.jsx';
+import { useAuthStore } from '../store/authStore.js';
 
 export function Sidebar({ user, circles, onCompose, onToggleTheme, theme, mobileOpen = false, onCloseMobile }) {
+  const logout = useAuthStore((state) => state.logout);
   const joinedCircles = circles.filter((circle) => circle.joined);
   const primaryNavigation = navigation.filter((item) => !['/settings', '/insights'].includes(item.path));
   const secondaryNavigation = navigation.filter((item) => ['/settings', '/insights'].includes(item.path));
@@ -100,10 +102,21 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme, mobile
         </div>
       </div>
 
-      <div className="mt-auto border-t pt-4">
+      <div className="mt-auto space-y-2 border-t pt-4">
         <Button variant="ghost" className="w-full justify-between rounded-xl" onClick={onToggleTheme}>
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           {theme === 'dark' ? <SunMedium size={16} /> : <MoonStar size={16} />}
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full justify-between rounded-xl text-rose-500 hover:bg-rose-500/10"
+          onClick={() => {
+            logout();
+            onCloseMobile?.();
+          }}
+        >
+          Log out
+          <LogOut size={16} />
         </Button>
       </div>
         </div>

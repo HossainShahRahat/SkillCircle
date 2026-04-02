@@ -56,7 +56,7 @@ export function NotificationBell() {
     <div ref={containerRef} className="relative">
       <Button
         variant="ghost"
-        className="relative h-10 w-10 rounded-full bg-[rgb(var(--bg-soft))] p-0"
+        className="relative h-11 w-11 rounded-full bg-[rgb(var(--bg-soft))] p-0 shadow-[inset_0_0_0_1px_rgba(var(--border),0.5)]"
         onClick={() => {
           if (!open) {
             if (token) {
@@ -66,7 +66,7 @@ export function NotificationBell() {
           setOpen((current) => !current);
         }}
       >
-        <Bell size={18} />
+        <Bell size={20} strokeWidth={2.2} />
         {unreadCount ? (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[rgb(var(--accent))] px-1 text-[10px] font-bold text-white">
             {unreadCount}

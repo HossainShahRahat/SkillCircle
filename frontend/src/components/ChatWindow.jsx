@@ -19,6 +19,7 @@ export function ChatWindow({
   onSearchChange,
   onReact,
   emptyMessage,
+  activeMembers = [],
 }) {
   const scrollRef = useRef(null);
   const previousLengthRef = useRef(messages.length);
@@ -97,6 +98,8 @@ export function ChatWindow({
           onTyping={onTyping}
           searchQuery={searchQuery}
           onSearchChange={onSearchChange}
+          activeMembers={activeMembers}
+          currentUser={currentUser}
         />
       </div>
 

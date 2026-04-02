@@ -3,7 +3,7 @@ import { SendHorizontal } from 'lucide-react';
 import { Avatar } from './Avatar.jsx';
 import { Button } from './Button.jsx';
 import { Input } from './Input.jsx';
-import { buildMentionToken, extractActiveMentionQuery, normalizeMentionName } from '../utils/mentions.js';
+import { buildMentionToken, extractActiveMentionQuery, scoreMentionMatch } from '../utils/mentions.js';
 
 export function CommentComposer({ user, activeMembers = [], onSubmit, submitting }) {
   const [comment, setComment] = useState('');
@@ -13,7 +13,10 @@ export function CommentComposer({ user, activeMembers = [], onSubmit, submitting
     if (mentionQuery === null) return [];
     return activeMembers
       .filter((member) => member.id !== user?.id)
-      .filter((member) => normalizeMentionName(member.name).includes(mentionQuery))
+      .map((member) => ({ member, score: scoreMentionMatch(member.name, mentionQuery) }))
+      .filter((entry) => entry.score >= 0)
+      .sort((left, right) => right.score - left.score || left.member.name.localeCompare(right.member.name))
+      .map((entry) => entry.member)
       .slice(0, 5);
   }, [activeMembers, mentionQuery, user]);
 
@@ -25,7 +28,7 @@ export function CommentComposer({ user, activeMembers = [], onSubmit, submitting
   }
 
   function insertMention(member) {
-    setComment((current) => current.replace(/@([A-Za-z0-9_]*)$/, `${buildMentionToken(member)} `));
+    setComment((current) => current.replace(/@([A-Za-z0-9_ ]*)$/, `${buildMentionToken(member)} `));
   }
 
   return (
@@ -61,4 +64,3 @@ export function CommentComposer({ user, activeMembers = [], onSubmit, submitting
     </div>
   );
 }
-

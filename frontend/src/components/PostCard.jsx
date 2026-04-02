@@ -7,6 +7,7 @@ import { InlineEditor } from './InlineEditor.jsx';
 import { MentionText } from './MentionText.jsx';
 import { ReactionBar } from './ReactionBar.jsx';
 import { Avatar } from './Avatar.jsx';
+import { UserHoverCard } from './UserHoverCard.jsx';
 import { formatRelativeTime } from '../utils/time.js';
 
 function formatTime(value) {
@@ -46,7 +47,13 @@ export function PostCard({
           <Avatar user={post.author} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-[15px]">
-              <p className="font-semibold">{post.author?.name || 'Unknown user'}</p>
+              {post.author?.id ? (
+                <UserHoverCard user={post.author}>
+                  <span className="font-semibold">{post.author?.name || 'Unknown user'}</span>
+                </UserHoverCard>
+              ) : (
+                <p className="font-semibold">{post.author?.name || 'Unknown user'}</p>
+              )}
               {post.circle ? (
                 <span className="rounded-full bg-[rgb(var(--accent-soft))] px-2.5 py-1 text-xs font-semibold text-[rgb(var(--accent))]">
                   {post.circle.name}
@@ -134,7 +141,13 @@ export function PostCard({
                 <div className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-3">
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold">{item.author?.name || 'Unknown user'}</p>
+                      {item.author?.id ? (
+                        <UserHoverCard user={item.author}>
+                          <span className="text-sm font-semibold">{item.author?.name || 'Unknown user'}</span>
+                        </UserHoverCard>
+                      ) : (
+                        <p className="text-sm font-semibold">{item.author?.name || 'Unknown user'}</p>
+                      )}
                       {item.isEdited ? <span className="text-[11px] font-semibold text-[rgb(var(--muted))]">edited</span> : null}
                     </div>
                     <div className="flex items-center gap-2">

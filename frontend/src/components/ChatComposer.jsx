@@ -2,6 +2,7 @@ import { Paperclip, Search, SendHorizontal, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from './Button.jsx';
 import { Input } from './Input.jsx';
+import { buildMentionToken, extractActiveMentionQuery, scoreMentionMatch } from '../utils/mentions.js';
 
 async function toDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -20,11 +21,23 @@ export function ChatComposer({
   onTyping,
   searchQuery,
   onSearchChange,
+  activeMembers = [],
+  currentUser,
 }) {
   const fileInputRef = useRef(null);
   const stopTypingTimeoutRef = useRef(null);
   const [attachment, setAttachment] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const mentionQuery = extractActiveMentionQuery(draft || '');
+  const suggestions = mentionQuery === null
+    ? []
+    : activeMembers
+      .filter((member) => member.id !== currentUser?.id)
+      .map((member) => ({ member, score: scoreMentionMatch(member.name, mentionQuery) }))
+      .filter((entry) => entry.score >= 0)
+      .sort((left, right) => right.score - left.score || left.member.name.localeCompare(right.member.name))
+      .map((entry) => entry.member)
+      .slice(0, 6);
 
   useEffect(() => () => {
     if (stopTypingTimeoutRef.current) {
@@ -59,6 +72,11 @@ export function ChatComposer({
     }
   }
 
+  function insertMention(member) {
+    onDraftChange((draft || '').replace(/@([A-Za-z0-9_ ]*)$/, `${buildMentionToken(member)} `));
+    onTyping(`${buildMentionToken(member)} `);
+  }
+
   return (
     <div className="border-t">
       <div className="flex items-center gap-3 border-b px-4 py-3 sm:px-5">
@@ -74,6 +92,26 @@ export function ChatComposer({
         />
       </div>
       <form className="px-4 py-4 sm:px-5" onSubmit={handleSubmit}>
+        {suggestions.length ? (
+          <div className="mb-3 rounded-2xl border bg-[rgb(var(--bg-soft))] p-2">
+            <p className="px-2 pb-2 pt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[rgb(var(--muted))]">
+              Mention someone
+            </p>
+            <div className="space-y-1">
+              {suggestions.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition hover:bg-[rgb(var(--bg-elevated))]"
+                  onClick={() => insertMention(member)}
+                >
+                  <span className="font-semibold">{member.name}</span>
+                  <span className="text-xs text-[rgb(var(--muted))]">{buildMentionToken(member)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {attachment ? (
           <div className="mb-3 flex items-center justify-between rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-3 text-sm">
             <div className="min-w-0">
