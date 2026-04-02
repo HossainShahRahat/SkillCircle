@@ -5,11 +5,13 @@ import { Card } from '../components/Card.jsx';
 import { Input } from '../components/Input.jsx';
 import { Textarea } from '../components/Textarea.jsx';
 import { Avatar } from '../components/Avatar.jsx';
+import { AnimatedNumber } from '../components/AnimatedNumber.jsx';
 import { Button } from '../components/Button.jsx';
 import { useAuthStore } from '../store/authStore.js';
 import { api } from '../services/api.js';
 import { useAppStore } from '../store/appStore.js';
 import { fileToDataUrl } from '../utils/uploads.js';
+import { staggerStyle } from '../utils/motion.js';
 
 export function ProfilePage() {
   const { userId } = useParams();
@@ -120,7 +122,7 @@ export function ProfilePage() {
 
   return (
     <div className="space-y-5">
-      <Card className="overflow-hidden p-0">
+      <Card className="motion-scale-in motion-lift overflow-hidden p-0">
         <div className="h-40 bg-gradient-to-r from-[rgb(var(--accent))] via-sky-500 to-cyan-400 sm:h-44" />
         <div className="grid gap-6 px-4 pb-5 pt-0 sm:px-6 md:px-8 lg:grid-cols-[minmax(320px,0.86fr)_minmax(0,1.14fr)] lg:gap-8 lg:pb-8">
           <div className="rounded-[28px] bg-[rgb(var(--bg-soft))] p-5 sm:p-6">
@@ -163,9 +165,9 @@ export function ProfilePage() {
                 [stats.totalPosts, 'Posts'],
                 [stats.totalLikesReceived, 'Likes received'],
                 [stats.circlesJoined, 'Circles'],
-              ].map(([value, label]) => (
-                <div key={label} className="rounded-2xl bg-[rgb(var(--bg-elevated))] p-4">
-                  <p className="text-2xl font-bold">{value}</p>
+              ].map(([value, label], index) => (
+                <div key={label} className="motion-fade-up rounded-2xl bg-[rgb(var(--bg-elevated))] p-4" style={staggerStyle(index + 1)}>
+                  <p className="text-2xl font-bold"><AnimatedNumber value={value} /></p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">{label}</p>
                 </div>
               ))}
@@ -284,7 +286,7 @@ export function ProfilePage() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="motion-fade-up motion-lift p-6" style={staggerStyle(5)}>
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold">Recent updates</h2>

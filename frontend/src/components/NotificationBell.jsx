@@ -56,7 +56,7 @@ export function NotificationBell() {
     <div ref={containerRef} className="relative">
       <Button
         variant="ghost"
-        className="relative h-11 w-11 rounded-full bg-[rgb(var(--bg-soft))] p-0 shadow-[inset_0_0_0_1px_rgba(var(--border),0.5)]"
+        className="relative h-11 w-11 rounded-full bg-[rgb(var(--bg-soft))] p-0 shadow-[inset_0_0_0_1px_rgba(var(--border),0.5)] hover:shadow-[0_8px_18px_rgba(15,23,42,0.12)]"
         onClick={() => {
           if (!open) {
             if (token) {
@@ -68,14 +68,14 @@ export function NotificationBell() {
       >
         <Bell size={20} strokeWidth={2.2} />
         {unreadCount ? (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[rgb(var(--accent))] px-1 text-[10px] font-bold text-white">
+          <span className="motion-pulse-badge absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[rgb(var(--accent))] px-1 text-[10px] font-bold text-white">
             {unreadCount}
           </span>
         ) : null}
       </Button>
 
       {open ? (
-        <div className="surface-card absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[min(360px,calc(100vw-2rem))] overflow-hidden p-0">
+        <div className="surface-card motion-dropdown absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[min(360px,calc(100vw-2rem))] overflow-hidden p-0">
           <div className="border-b px-4 py-3">
           <div className="mb-3">
             <p className="text-base font-bold">Notifications</p>
@@ -86,7 +86,7 @@ export function NotificationBell() {
           {notificationsLoading ? (
             <div className="space-y-3 p-4">
               {[1, 2, 3].map((item) => (
-                <div key={item} className="h-14 animate-pulse rounded-2xl bg-[rgb(var(--bg-soft))]" />
+                <div key={item} className="motion-shimmer h-14 rounded-2xl" />
               ))}
             </div>
           ) : notifications.length ? (

@@ -31,7 +31,7 @@ export function MessageBubble({
   const isOwn = message.user_id === currentUser?.id || message.sender_id === currentUser?.id;
 
   return (
-    <div className={`animate-[message-in_180ms_ease-out] flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isOwn ? 'justify-end motion-chat-bubble-right' : 'justify-start motion-chat-bubble-left'}`}>
       <div className={`flex max-w-[88%] items-end gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
         {!isOwn ? <Avatar user={message.author} size="sm" /> : null}
         <div className="group">
@@ -62,7 +62,7 @@ export function MessageBubble({
               <button
                 key={reaction.emoji}
                 type="button"
-                className={`rounded-full px-2 py-1 text-xs ${reaction.reactedByMe ? 'bg-[rgb(var(--accent-soft))] font-semibold' : 'bg-[rgb(var(--bg-soft))]'}`}
+                className={`motion-button rounded-full px-2 py-1 text-xs ${reaction.reactedByMe ? 'bg-[rgb(var(--accent-soft))] font-semibold' : 'bg-[rgb(var(--bg-soft))]'}`}
                 onClick={() => onReact(message.id, reaction.emoji)}
               >
                 {reaction.emoji} {reaction.count}
@@ -72,7 +72,7 @@ export function MessageBubble({
               <button
                 key={`${message.id}-${emoji}`}
                 type="button"
-                className="opacity-0 transition group-hover:opacity-100"
+                className="motion-button opacity-0 transition group-hover:opacity-100"
                 onClick={() => onReact(message.id, emoji)}
               >
                 {emoji}

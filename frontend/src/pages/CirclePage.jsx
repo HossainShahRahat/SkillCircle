@@ -13,6 +13,7 @@ import { useAppStore } from '../store/appStore.js';
 import { useAuthStore } from '../store/authStore.js';
 import { getSocket } from '../services/socket.js';
 import { StreakBadge } from '../components/StreakBadge.jsx';
+import { staggerStyle } from '../utils/motion.js';
 
 export function CirclePage() {
   const { circleId } = useParams();
@@ -100,7 +101,7 @@ export function CirclePage() {
 
   return (
     <div className="space-y-5">
-      <Card className="overflow-hidden p-0">
+      <Card className="motion-fade-up motion-lift overflow-hidden p-0">
         <div className="bg-[rgb(var(--text))] px-6 py-8 text-white dark:bg-[rgb(var(--accent))]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -190,7 +191,7 @@ export function CirclePage() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
-          <Card className="p-5">
+          <Card className="motion-fade-up motion-lift p-5" style={staggerStyle(1)}>
             <div className="flex items-center gap-3 rounded-2xl border bg-[rgb(var(--bg-elevated))] px-4 py-3">
               <Search size={16} className="text-[rgb(var(--muted))]" />
               <input
@@ -244,7 +245,7 @@ export function CirclePage() {
           </Card>
 
           {activeCircle.joined && circleAnalytics ? (
-            <Card className="p-5">
+            <Card className="motion-fade-up motion-lift p-5" style={staggerStyle(2)}>
               <div className="mb-4">
                 <p className="text-lg font-bold">Circle insights</p>
                 <p className="muted-copy">A quick read on activity, consistency, and member momentum.</p>
@@ -266,20 +267,21 @@ export function CirclePage() {
           ) : null}
 
           {posts.length ? (
-            posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                user={user}
-                onComment={(postId, content) => commentOnPost(postId, content, user)}
-                onReact={toggleReaction}
-                onUpdatePost={updatePost}
-                onDeletePost={deletePost}
-                onUpdateComment={updateComment}
-                onDeleteComment={deleteComment}
-                activeMembers={activeCircle.members || []}
-                canModerate={['admin', 'moderator'].includes(activeCircle.myRole)}
-              />
+            posts.map((post, index) => (
+              <div key={post.id} className="motion-fade-up" style={staggerStyle(index + 3)}>
+                <PostCard
+                  post={post}
+                  user={user}
+                  onComment={(postId, content) => commentOnPost(postId, content, user)}
+                  onReact={toggleReaction}
+                  onUpdatePost={updatePost}
+                  onDeletePost={deletePost}
+                  onUpdateComment={updateComment}
+                  onDeleteComment={deleteComment}
+                  activeMembers={activeCircle.members || []}
+                  canModerate={['admin', 'moderator'].includes(activeCircle.myRole)}
+                />
+              </div>
             ))
           ) : (
             <Card className="p-8 text-center">
@@ -292,7 +294,7 @@ export function CirclePage() {
         {activeCircle.joined ? (
           <div className="space-y-5">
             {circleAnalytics?.leaderboard?.length ? (
-              <Card className="p-5">
+              <Card className="motion-fade-up motion-lift p-5" style={staggerStyle(1)}>
                 <div className="mb-4">
                   <p className="text-lg font-bold">Leaderboard</p>
                   <p className="muted-copy">Subtle rewards for consistency inside this circle.</p>
@@ -315,6 +317,7 @@ export function CirclePage() {
                 </div>
               </Card>
             ) : null}
+            <div className="motion-fade-up" style={staggerStyle(2)}>
             <CircleChatPanel
               messages={messages}
               currentUser={user}
@@ -333,12 +336,15 @@ export function CirclePage() {
               onSearchChange={setChatSearchQuery}
               onReact={(messageId, emoji) => reactToCircleMessage(messageId, emoji)}
             />
+            </div>
+            <div className="motion-fade-up" style={staggerStyle(3)}>
             <CircleMemberPanel
               members={activeCircle.members || []}
               myRole={activeCircle.myRole}
               currentUserId={user?.id}
               onRoleChange={(memberId, role) => updateCircleMemberRole(circleId, memberId, role)}
             />
+            </div>
           </div>
         ) : (
           <Card className="p-6">

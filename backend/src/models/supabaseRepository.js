@@ -87,6 +87,16 @@ function buildWeeklyActivity(posts, currentDate = new Date()) {
   return series;
 }
 
+function normalizeGoal(goal) {
+  return {
+    ...goal,
+    progress_percent: goal.target_value > 0
+      ? Math.min(100, Math.round(((goal.current_value || 0) / goal.target_value) * 100))
+      : 0,
+    is_complete: goal.status === 'completed' || (goal.current_value || 0) >= goal.target_value,
+  };
+}
+
 function canViewSupabasePost(post, currentUserId, settingsMap, membershipMap, viewerCircleIds) {
   if (!post || post.deleted_at) return false;
   if (post.user_id === currentUserId) return true;
@@ -311,6 +321,57 @@ export function createSupabaseRepository() {
     return data;
   }
 
+  async function listUserGoals(userId) {
+    const { data, error } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(normalizeGoal);
+  }
+
+  async function listSkillProgress(userId) {
+    const { data, error } = await supabase
+      .from('skill_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function buildRetentionOverview(userId) {
+    const [streak, goals, skillProgress, postsData] = await Promise.all([
+      ensureStreak(userId),
+      listUserGoals(userId),
+      listSkillProgress(userId),
+      supabase.from('posts').select('id, user_id, created_at, deleted_at').eq('user_id', userId),
+    ]);
+
+    const activeGoals = goals.filter((goal) => goal.status === 'active' && !goal.is_complete);
+    const completedGoals = goals.filter((goal) => goal.is_complete);
+    const averageProgress = skillProgress.length
+      ? Math.round(skillProgress.reduce((total, entry) => total + (entry.progress_percent || 0), 0) / skillProgress.length)
+      : 0;
+
+    return {
+      streak: {
+        ...streak,
+        badge: getBadgeForStreak(streak.current_streak || 0),
+      },
+      goals,
+      skillProgress,
+      summary: {
+        activeGoals: activeGoals.length,
+        completedGoals: completedGoals.length,
+        averageSkillProgress: averageProgress,
+        weeklyCheckins: buildWeeklyActivity((postsData.data || []).filter((post) => !post.deleted_at))
+          .reduce((total, item) => total + item.count, 0),
+      },
+    };
+  }
+
   return {
     async findUserById(id) {
       const { data, error } = await supabase
@@ -339,9 +400,10 @@ export function createSupabaseRepository() {
       if (likesError) throw likesError;
       if (membersError) throw membersError;
 
-      const [settings, streak] = await Promise.all([
+      const [settings, streak, retention] = await Promise.all([
         ensureUserSettings(userId),
         ensureStreak(userId),
+        buildRetentionOverview(userId),
       ]);
 
       return {
@@ -352,6 +414,7 @@ export function createSupabaseRepository() {
           ...streak,
           badge: getBadgeForStreak(streak.current_streak || 0),
         },
+        retention,
       };
     },
     async findUserWithPasswordByEmail(email) {
@@ -377,6 +440,7 @@ export function createSupabaseRepository() {
       await Promise.all([
         supabase.from('user_settings').insert(defaultSettings(data.id)),
         supabase.from('streaks').insert({ user_id: data.id, current_streak: 0, last_posted_at: null }),
+        supabase.from('goals').insert([]).select().limit(0).catch(() => null),
       ]);
       return data;
     },
@@ -848,10 +912,11 @@ export function createSupabaseRepository() {
       if (membershipError) throw membershipError;
 
       const joinedCircleIds = (memberships || []).map((member) => member.circle_id);
-      const [feed, notifications, streak] = await Promise.all([
+      const [feed, notifications, streak, retention] = await Promise.all([
         joinedCircleIds.length ? loadPosts(userId) : loadPosts(userId),
         this.listNotifications(userId),
         ensureStreak(userId),
+        buildRetentionOverview(userId),
       ]);
 
       return {
@@ -868,6 +933,7 @@ export function createSupabaseRepository() {
           totalPosts: feed.filter((post) => post.author?.id === userId).length,
           activeCircleCount: new Set(feed.filter((post) => post.author?.id === userId && post.circle_id).map((post) => post.circle_id)).size,
         },
+        retention,
       };
     },
     async searchCircle(circleId, query, userId) {
@@ -1270,11 +1336,12 @@ export function createSupabaseRepository() {
       return data;
     },
     async getUserAnalytics(userId) {
-      const [profile, streak, postsData, memberships] = await Promise.all([
+      const [profile, streak, postsData, memberships, retention] = await Promise.all([
         this.getProfile(userId),
         ensureStreak(userId),
         supabase.from('posts').select('id, circle_id, created_at, deleted_at').eq('user_id', userId),
         supabase.from('circle_members').select('circle_id').eq('user_id', userId),
+        buildRetentionOverview(userId),
       ]);
 
       const visiblePosts = (postsData.data || []).filter((post) => !post.deleted_at);
@@ -1301,7 +1368,134 @@ export function createSupabaseRepository() {
         },
         weeklyActivity: buildWeeklyActivity(visiblePosts),
         topCircle,
+        retention,
       };
+    },
+    async getRetentionOverview(userId) {
+      return buildRetentionOverview(userId);
+    },
+    async createGoal(userId, payload) {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('goals')
+        .insert({
+          user_id: userId,
+          title: payload.title,
+          description: payload.description || '',
+          target_value: payload.targetValue,
+          current_value: Math.min(payload.currentValue ?? 0, payload.targetValue),
+          unit: payload.unit,
+          cadence: payload.cadence,
+          status: (payload.currentValue ?? 0) >= payload.targetValue ? 'completed' : 'active',
+          due_date: payload.dueDate || null,
+          created_at: now,
+          updated_at: now,
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      return normalizeGoal(data);
+    },
+    async updateGoal(userId, goalId, payload) {
+      const updates = {
+        ...(payload.title !== undefined ? { title: payload.title } : {}),
+        ...(payload.description !== undefined ? { description: payload.description } : {}),
+        ...(payload.targetValue !== undefined ? { target_value: payload.targetValue } : {}),
+        ...(payload.currentValue !== undefined ? { current_value: payload.currentValue } : {}),
+        ...(payload.unit !== undefined ? { unit: payload.unit } : {}),
+        ...(payload.cadence !== undefined ? { cadence: payload.cadence } : {}),
+        ...(payload.dueDate !== undefined ? { due_date: payload.dueDate } : {}),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: existing, error: existingError } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('id', goalId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (!existing) {
+        const notFound = new Error('Goal not found.');
+        notFound.status = 404;
+        throw notFound;
+      }
+
+      const targetValue = updates.target_value ?? existing.target_value;
+      const currentValue = Math.max(0, Math.min(updates.current_value ?? existing.current_value, targetValue));
+      updates.current_value = currentValue;
+      updates.status = payload.status || (currentValue >= targetValue ? 'completed' : 'active');
+
+      const { data, error } = await supabase
+        .from('goals')
+        .update(updates)
+        .eq('id', goalId)
+        .eq('user_id', userId)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return normalizeGoal(data);
+    },
+    async deleteGoal(userId, goalId) {
+      const { data, error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('id', goalId)
+        .eq('user_id', userId)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        const notFound = new Error('Goal not found.');
+        notFound.status = 404;
+        throw notFound;
+      }
+      return { deleted: true };
+    },
+    async upsertSkillProgress(userId, payload) {
+      const now = new Date().toISOString();
+      const { data: existing, error: existingError } = await supabase
+        .from('skill_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .ilike('skill_name', payload.skillName)
+        .maybeSingle();
+      if (existingError) throw existingError;
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('skill_progress')
+          .update({
+            skill_name: payload.skillName,
+            progress_percent: payload.progressPercent,
+            current_level: payload.currentLevel || '',
+            target_level: payload.targetLevel || '',
+            notes: payload.notes || '',
+            updated_at: now,
+          })
+          .eq('id', existing.id)
+          .select('*')
+          .single();
+        if (error) throw error;
+        return data;
+      }
+
+      const { data, error } = await supabase
+        .from('skill_progress')
+        .insert({
+          user_id: userId,
+          skill_name: payload.skillName,
+          progress_percent: payload.progressPercent,
+          current_level: payload.currentLevel || '',
+          target_level: payload.targetLevel || '',
+          notes: payload.notes || '',
+          created_at: now,
+          updated_at: now,
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data;
     },
     async getCircleAnalytics(circleId, userId) {
       const [circle, role, feed, members, messagesData] = await Promise.all([

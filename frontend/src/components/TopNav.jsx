@@ -116,7 +116,7 @@ export function TopNav({ user, theme, onToggleTheme, onCompose, onToggleMobileMe
             </Button>
 
             {profileMenuOpen ? (
-              <div className="surface-card absolute right-0 top-[calc(100%+0.7rem)] z-40 w-60 rounded-2xl p-2">
+              <div className="surface-card motion-dropdown absolute right-0 top-[calc(100%+0.7rem)] z-40 w-60 rounded-2xl p-2">
                 <div className="border-b px-3 py-3">
                   <p className="truncate text-sm font-bold">{user?.name || 'SkillCircle user'}</p>
                   <p className="truncate text-xs text-[rgb(var(--muted))]">{user?.email || 'Signed in'}</p>

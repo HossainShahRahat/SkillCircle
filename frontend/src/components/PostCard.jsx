@@ -5,7 +5,9 @@ import { Button } from './Button.jsx';
 import { CommentComposer } from './CommentComposer.jsx';
 import { InlineEditor } from './InlineEditor.jsx';
 import { MentionText } from './MentionText.jsx';
+import { PostDetailModal } from './PostDetailModal.jsx';
 import { ReactionBar } from './ReactionBar.jsx';
+import { ReactionQuickActions } from './ReactionQuickActions.jsx';
 import { Avatar } from './Avatar.jsx';
 import { UserHoverCard } from './UserHoverCard.jsx';
 import { formatRelativeTime } from '../utils/time.js';
@@ -30,6 +32,7 @@ export function PostCard({
   const [submitting, setSubmitting] = useState(false);
   const [editingPost, setEditingPost] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   async function handleComment(content) {
     setSubmitting(true);
@@ -41,7 +44,7 @@ export function PostCard({
   }
 
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className="motion-lift overflow-hidden p-0">
       <div className="px-5 pb-4 pt-5 sm:px-6">
         <div className="mb-4 flex items-start gap-3">
           <Avatar user={post.author} />
@@ -117,11 +120,12 @@ export function PostCard({
         </div>
 
         <div className="grid grid-cols-3 gap-2 border-b py-2">
-          <button type="button" className="social-action-button" onClick={() => onReact('post', post.id, 'like')}>
-            <ThumbsUp size={16} />
-            Like
-          </button>
-          <button type="button" className="social-action-button" onClick={() => document.getElementById(`comment-box-${post.id}`)?.focus()}>
+          <ReactionQuickActions
+            myReaction={post.reactions?.myReaction}
+            onDefaultLike={() => onReact('post', post.id, 'like')}
+            onReact={(type) => onReact('post', post.id, type)}
+          />
+          <button type="button" className="social-action-button" onClick={() => setDetailOpen(true)}>
             <MessageCircle size={16} />
             Comment
           </button>
@@ -135,7 +139,7 @@ export function PostCard({
 
         <div className="mt-4 space-y-3">
           {comments.map((item) => (
-            <div key={item.id} className="flex items-start gap-3">
+            <div key={item.id} className="motion-fade-up flex items-start gap-3">
               <Avatar user={item.author} size="sm" />
               <div className="min-w-0 flex-1">
                 <div className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-3">
@@ -203,6 +207,17 @@ export function PostCard({
           />
         </div>
       </div>
+
+      <PostDetailModal
+        open={detailOpen}
+        post={post}
+        user={user}
+        submitting={submitting}
+        activeMembers={activeMembers}
+        onClose={() => setDetailOpen(false)}
+        onComment={handleComment}
+        onReact={onReact}
+      />
     </Card>
   );
 }

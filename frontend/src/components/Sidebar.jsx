@@ -21,7 +21,7 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme, mobile
           onClick={onCloseMobile}
         />
       ) : null}
-      <aside className={`fixed inset-y-16 left-0 z-40 w-[280px] border-r bg-[rgb(var(--bg-elevated))] p-4 transition lg:sticky lg:top-20 lg:block lg:h-[calc(100vh-6rem)] lg:rounded-2xl lg:border lg:bg-transparent lg:p-0 lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+      <aside className={`fixed inset-y-16 left-0 z-40 w-[280px] border-r bg-[rgb(var(--bg-elevated))] p-4 transition duration-[240ms] ease-[var(--motion-ease)] lg:sticky lg:top-20 lg:block lg:h-[calc(100vh-6rem)] lg:rounded-2xl lg:border lg:bg-transparent lg:p-0 lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="flex h-full flex-col rounded-2xl bg-[rgb(var(--bg-elevated))] p-3 shadow-soft lg:border">
       <div className="mb-4 flex items-center gap-3 rounded-xl px-2 py-2">
         <Avatar user={user} size="md" />
@@ -41,8 +41,8 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme, mobile
           <NavLink
             key={path}
             to={path}
-            className={({ isActive }) =>
-              `social-nav-link ${isActive ? 'social-nav-link-active' : ''}`
+          className={({ isActive }) =>
+              `social-nav-link motion-lift ${isActive ? 'social-nav-link-active' : ''}`
             }
             onClick={onCloseMobile}
           >
@@ -62,7 +62,7 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme, mobile
               key={path}
               to={path}
               className={({ isActive }) =>
-                `social-nav-link ${isActive ? 'social-nav-link-active' : ''}`
+                `social-nav-link motion-lift ${isActive ? 'social-nav-link-active' : ''}`
               }
               onClick={onCloseMobile}
             >
@@ -82,7 +82,7 @@ export function Sidebar({ user, circles, onCompose, onToggleTheme, theme, mobile
             <NavLink
               key={circle.id}
               to={`/circles/${circle.id}`}
-              className={({ isActive }) => `block rounded-xl px-3 py-3 transition ${isActive ? 'bg-[rgb(var(--accent-soft))]' : 'hover:bg-[rgb(var(--bg-soft))]'}`}
+              className={({ isActive }) => `motion-lift block rounded-xl px-3 py-3 transition ${isActive ? 'bg-[rgb(var(--accent-soft))]' : 'hover:bg-[rgb(var(--bg-soft))]'}`}
               onClick={onCloseMobile}
             >
               <div className="flex items-center justify-between gap-3">

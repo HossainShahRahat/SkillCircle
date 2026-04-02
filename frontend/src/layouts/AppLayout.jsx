@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar.jsx';
 import { RightPanel } from '../components/RightPanel.jsx';
 import { CreatePostModal } from '../components/CreatePostModal.jsx';
@@ -19,6 +19,7 @@ import { navigation } from '../data/navigation.js';
 
 export function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -161,7 +162,7 @@ export function AppLayout() {
 
         <div className="min-w-0 flex-1">
           <FeatureTips user={user} onCompose={() => setModalOpen(true)} />
-          <main className="mx-auto mt-4 min-w-0 w-full max-w-[980px] 2xl:max-w-[1080px]">
+          <main key={location.pathname} className="motion-page mx-auto mt-4 min-w-0 w-full max-w-[980px] 2xl:max-w-[1080px]">
             <Outlet />
           </main>
         </div>

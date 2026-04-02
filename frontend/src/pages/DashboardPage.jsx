@@ -3,6 +3,7 @@ import { BellRing, Flame, RefreshCw, Sparkles, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
+import { AnimatedNumber } from '../components/AnimatedNumber.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { FeedSkeleton } from '../components/FeedSkeleton.jsx';
 import { InlinePostComposer } from '../components/InlinePostComposer.jsx';
@@ -10,6 +11,7 @@ import { PostCard } from '../components/PostCard.jsx';
 import { useAppStore } from '../store/appStore.js';
 import { useAuthStore } from '../store/authStore.js';
 import { StreakBadge } from '../components/StreakBadge.jsx';
+import { staggerStyle } from '../utils/motion.js';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -66,7 +68,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <Card className="p-5 sm:p-6">
+      <Card className="motion-fade-up motion-lift p-5 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-[rgb(var(--muted))]">Home</p>
@@ -107,15 +109,15 @@ export function DashboardPage() {
               hint: 'posts shared',
               icon: Sparkles,
             },
-          ].map(({ label, value, hint, icon: Icon }) => (
-            <div key={label} className="rounded-2xl bg-[rgb(var(--bg-soft))] p-4">
+          ].map(({ label, value, hint, icon: Icon }, index) => (
+            <div key={label} className="motion-fade-up rounded-2xl bg-[rgb(var(--bg-soft))] p-4" style={staggerStyle(index + 1)}>
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-[rgb(var(--muted))]">{label}</p>
                 <Icon size={18} className="text-[rgb(var(--accent))]" />
               </div>
               <div className="mt-3 flex items-end justify-between gap-3">
                 <div>
-                  <p className="text-3xl font-bold">{value}</p>
+                  <p className="text-3xl font-bold"><AnimatedNumber value={value} /></p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[rgb(var(--muted))]">{hint}</p>
                 </div>
                 {label === 'Posting streak' ? <StreakBadge badge={dashboard.streak?.badge} /> : null}
@@ -160,18 +162,19 @@ export function DashboardPage() {
             <FeedSkeleton count={3} />
           ) : visiblePosts.length ? (
             <>
-              {visiblePosts.slice(0, visibleCount).map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  user={user}
-                  onComment={(postId, content) => commentOnPost(postId, content, user)}
-                  onReact={toggleReaction}
-                  onUpdatePost={updatePost}
-                  onDeletePost={deletePost}
-                  onUpdateComment={updateComment}
-                  onDeleteComment={deleteComment}
-                />
+              {visiblePosts.slice(0, visibleCount).map((post, index) => (
+                <div key={post.id} className="motion-fade-up" style={staggerStyle(index)}>
+                  <PostCard
+                    post={post}
+                    user={user}
+                    onComment={(postId, content) => commentOnPost(postId, content, user)}
+                    onReact={toggleReaction}
+                    onUpdatePost={updatePost}
+                    onDeletePost={deletePost}
+                    onUpdateComment={updateComment}
+                    onDeleteComment={deleteComment}
+                  />
+                </div>
               ))}
               {visiblePosts.length > visibleCount ? (
                 <div ref={loadMoreRef} className="rounded-2xl bg-[rgb(var(--bg-soft))] px-4 py-4 text-center text-sm text-[rgb(var(--muted))]">
@@ -196,7 +199,7 @@ export function DashboardPage() {
         </div>
 
         <div className="space-y-5">
-          <Card className="p-5">
+          <Card className="motion-fade-up motion-lift p-5" style={staggerStyle(2)}>
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgb(var(--text))] text-white dark:bg-white dark:text-slate-900">
                 <Flame size={20} />

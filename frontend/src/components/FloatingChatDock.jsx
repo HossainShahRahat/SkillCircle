@@ -99,7 +99,7 @@ function FloatingChatBox({ chat, currentUser, token }) {
   }
 
   return (
-    <div className="pointer-events-auto flex h-[460px] w-[338px] flex-col overflow-hidden rounded-t-2xl border border-b-0 border-[rgba(var(--border),0.9)] bg-[rgb(var(--bg-elevated))] shadow-[0_18px_48px_rgba(0,0,0,0.28)]">
+    <div className="pointer-events-auto motion-dock-box flex h-[460px] w-[338px] flex-col overflow-hidden rounded-t-2xl border border-b-0 border-[rgba(var(--border),0.9)] bg-[rgb(var(--bg-elevated))] shadow-[0_18px_48px_rgba(0,0,0,0.28)]">
       <div className="flex items-center justify-between gap-3 bg-[rgb(var(--bg-elevated))] px-3 py-2.5">
         <button
           type="button"
@@ -233,7 +233,7 @@ function MinimizedChatPill({ chat }) {
   const closeDirectChatBox = useAppStore((state) => state.closeDirectChatBox);
 
   return (
-    <div className="pointer-events-auto flex h-14 min-w-[220px] max-w-[260px] items-center gap-3 rounded-t-2xl border border-b-0 border-[rgba(var(--border),0.9)] bg-[rgb(var(--bg-elevated))] px-3 shadow-[0_14px_32px_rgba(0,0,0,0.24)]">
+    <div className="pointer-events-auto motion-dock-pill flex h-14 min-w-[220px] max-w-[260px] items-center gap-3 rounded-t-2xl border border-b-0 border-[rgba(var(--border),0.9)] bg-[rgb(var(--bg-elevated))] px-3 shadow-[0_14px_32px_rgba(0,0,0,0.24)]">
       <button
         type="button"
         className="flex min-w-0 flex-1 items-center gap-3 text-left"

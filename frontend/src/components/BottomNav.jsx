@@ -20,7 +20,7 @@ export function BottomNav({ onCompose }) {
             <NavLink
               key={path}
               to={path}
-              className={({ isActive }) => `flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-semibold transition ${
+              className={({ isActive }) => `motion-bottom-nav-item flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-semibold transition ${
                 isActive
                   ? 'bg-[rgb(var(--accent-soft))] text-[rgb(var(--accent))]'
                   : 'text-[rgb(var(--muted))]'

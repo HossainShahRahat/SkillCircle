@@ -172,6 +172,84 @@ export const demoStreaks = [
   },
 ];
 
+export const demoGoals = [
+  {
+    id: 'g_demo_1',
+    user_id: 'u_demo_1',
+    title: 'Ship three thoughtful React updates this week',
+    description: 'Use short, high-signal posts to document meaningful UI progress.',
+    target_value: 3,
+    current_value: 2,
+    unit: 'posts',
+    cadence: 'weekly',
+    status: 'active',
+    due_date: '2026-04-06T23:59:59.000Z',
+    created_at: '2026-03-31T08:00:00.000Z',
+    updated_at: '2026-04-01T18:00:00.000Z',
+  },
+  {
+    id: 'g_demo_2',
+    user_id: 'u_demo_2',
+    title: 'Keep the backend streak alive all week',
+    description: 'Post one backend learning note per day.',
+    target_value: 7,
+    current_value: 5,
+    unit: 'days',
+    cadence: 'weekly',
+    status: 'active',
+    due_date: '2026-04-06T23:59:59.000Z',
+    created_at: '2026-03-30T08:00:00.000Z',
+    updated_at: '2026-04-01T18:00:00.000Z',
+  },
+];
+
+export const demoSkillProgress = [
+  {
+    id: 'sp_demo_1',
+    user_id: 'u_demo_1',
+    skill_name: 'React',
+    progress_percent: 78,
+    current_level: 'Intermediate',
+    target_level: 'Advanced',
+    notes: 'Component patterns feel stable. The next unlock is motion polish.',
+    updated_at: '2026-04-01T18:00:00.000Z',
+    created_at: '2026-03-28T08:00:00.000Z',
+  },
+  {
+    id: 'sp_demo_2',
+    user_id: 'u_demo_1',
+    skill_name: 'Design Systems',
+    progress_percent: 64,
+    current_level: 'Building',
+    target_level: 'Confident',
+    notes: 'Spacing tokens and shared primitives are finally sticking.',
+    updated_at: '2026-04-01T18:00:00.000Z',
+    created_at: '2026-03-29T08:00:00.000Z',
+  },
+  {
+    id: 'sp_demo_3',
+    user_id: 'u_demo_2',
+    skill_name: 'Postgres',
+    progress_percent: 72,
+    current_level: 'Intermediate',
+    target_level: 'Advanced',
+    notes: 'Query design is improving. I still want deeper indexing intuition.',
+    updated_at: '2026-04-01T18:00:00.000Z',
+    created_at: '2026-03-29T08:00:00.000Z',
+  },
+  {
+    id: 'sp_demo_4',
+    user_id: 'u_demo_2',
+    skill_name: 'Architecture',
+    progress_percent: 81,
+    current_level: 'Practiced',
+    target_level: 'Strategic',
+    notes: 'Tradeoff framing is getting faster and more grounded.',
+    updated_at: '2026-04-01T18:00:00.000Z',
+    created_at: '2026-03-30T08:00:00.000Z',
+  },
+];
+
 export const demoUserSettings = [
   {
     user_id: 'u_demo_1',

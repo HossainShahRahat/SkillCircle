@@ -97,7 +97,7 @@ export function UserHoverCard({ user, children, className = '' }) {
       </Link>
 
       {open && user?.id ? (
-        <div className="surface-card absolute left-0 top-[calc(100%+0.55rem)] z-40 w-[280px] rounded-2xl p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
+        <div className="surface-card motion-dropdown motion-lift absolute left-0 top-[calc(100%+0.55rem)] z-40 w-[280px] rounded-2xl p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
           <div className="flex items-start gap-3">
             <Avatar user={profileUser} size="md" />
             <div className="min-w-0 flex-1">

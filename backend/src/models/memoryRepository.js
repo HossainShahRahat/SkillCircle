@@ -3,11 +3,13 @@ import {
   demoCircleMembers,
   demoCircles,
   demoComments,
+  demoGoals,
   demoLikes,
   demoMessages,
   demoNotifications,
   demoPosts,
   demoReactions,
+  demoSkillProgress,
   demoStreaks,
   demoUserSettings,
   demoUsers,
@@ -235,6 +237,56 @@ function buildWeeklyActivity(posts, currentDate = new Date()) {
   return series;
 }
 
+function normalizeGoal(goal) {
+  return {
+    ...goal,
+    progress_percent: goal.target_value > 0
+      ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
+      : 0,
+    is_complete: goal.status === 'completed' || goal.current_value >= goal.target_value,
+  };
+}
+
+function getUserGoals(goals, userId) {
+  return goals
+    .filter((goal) => goal.user_id === userId)
+    .sort((left, right) => new Date(right.updated_at || right.created_at) - new Date(left.updated_at || left.created_at))
+    .map(normalizeGoal);
+}
+
+function getSkillProgressEntries(skillProgress, userId) {
+  return skillProgress
+    .filter((entry) => entry.user_id === userId)
+    .sort((left, right) => new Date(right.updated_at || right.created_at) - new Date(left.updated_at || left.created_at));
+}
+
+function buildRetentionOverview({ userId, streaks, goals, skillProgress, posts }) {
+  const streak = getStreakRecord(streaks, userId);
+  const goalEntries = getUserGoals(goals, userId);
+  const progressEntries = getSkillProgressEntries(skillProgress, userId);
+  const activeGoals = goalEntries.filter((goal) => goal.status === 'active' && !goal.is_complete);
+  const completedGoals = goalEntries.filter((goal) => goal.is_complete);
+  const averageProgress = progressEntries.length
+    ? Math.round(progressEntries.reduce((total, entry) => total + (entry.progress_percent || 0), 0) / progressEntries.length)
+    : 0;
+
+  return {
+    streak: {
+      ...streak,
+      badge: getBadgeForStreak(streak.current_streak),
+    },
+    goals: goalEntries,
+    skillProgress: progressEntries,
+    summary: {
+      activeGoals: activeGoals.length,
+      completedGoals: completedGoals.length,
+      averageSkillProgress: averageProgress,
+      weeklyCheckins: buildWeeklyActivity(posts.filter((post) => post.user_id === userId && !post.deleted_at))
+        .reduce((total, item) => total + item.count, 0),
+    },
+  };
+}
+
 function buildLeaderboard(circleId, circleMembers, posts, streaks, users) {
   return circleMembers
     .filter((member) => member.circle_id === circleId)
@@ -271,6 +323,8 @@ export function createMemoryRepository() {
   const circles = structuredClone(demoCircles);
   const circleMembers = structuredClone(demoCircleMembers);
   const streaks = structuredClone(demoStreaks);
+  const goals = structuredClone(demoGoals);
+  const skillProgress = structuredClone(demoSkillProgress);
   const userSettings = structuredClone(demoUserSettings);
 
   return {
@@ -289,6 +343,7 @@ export function createMemoryRepository() {
           ...getStreakRecord(streaks, userId),
           badge: getBadgeForStreak(getStreakRecord(streaks, userId).current_streak),
         },
+        retention: buildRetentionOverview({ userId, streaks, goals, skillProgress, posts }),
       };
     },
     async findUserWithPasswordByEmail(email) {
@@ -633,6 +688,7 @@ export function createMemoryRepository() {
           totalPosts: myPosts.length,
           activeCircleCount: new Set(myPosts.filter((post) => post.circle_id).map((post) => post.circle_id)).size,
         },
+        retention: buildRetentionOverview({ userId, streaks, goals, skillProgress, posts }),
       };
     },
     async searchCircle(circleId, query, userId) {
@@ -812,7 +868,94 @@ export function createMemoryRepository() {
         },
         weeklyActivity: buildWeeklyActivity(myPosts),
         topCircle: topCircleId ? circles.find((circle) => circle.id === topCircleId) || null : null,
+        retention: buildRetentionOverview({ userId, streaks, goals, skillProgress, posts }),
       };
+    },
+    async getRetentionOverview(userId) {
+      return buildRetentionOverview({ userId, streaks, goals, skillProgress, posts });
+    },
+    async createGoal(userId, payload) {
+      const now = new Date().toISOString();
+      const goal = {
+        id: `g_${nanoid(10)}`,
+        user_id: userId,
+        title: payload.title,
+        description: payload.description || '',
+        target_value: payload.targetValue,
+        current_value: Math.min(payload.currentValue ?? 0, payload.targetValue),
+        unit: payload.unit,
+        cadence: payload.cadence,
+        status: payload.currentValue >= payload.targetValue ? 'completed' : 'active',
+        due_date: payload.dueDate || null,
+        created_at: now,
+        updated_at: now,
+      };
+      goals.unshift(goal);
+      return normalizeGoal(goal);
+    },
+    async updateGoal(userId, goalId, payload) {
+      const goal = goals.find((item) => item.id === goalId && item.user_id === userId);
+      if (!goal) {
+        const error = new Error('Goal not found.');
+        error.status = 404;
+        throw error;
+      }
+
+      Object.assign(goal, {
+        ...(payload.title !== undefined ? { title: payload.title } : {}),
+        ...(payload.description !== undefined ? { description: payload.description } : {}),
+        ...(payload.targetValue !== undefined ? { target_value: payload.targetValue } : {}),
+        ...(payload.currentValue !== undefined ? { current_value: payload.currentValue } : {}),
+        ...(payload.unit !== undefined ? { unit: payload.unit } : {}),
+        ...(payload.cadence !== undefined ? { cadence: payload.cadence } : {}),
+        ...(payload.dueDate !== undefined ? { due_date: payload.dueDate } : {}),
+        updated_at: new Date().toISOString(),
+      });
+      goal.current_value = Math.max(0, Math.min(goal.current_value, goal.target_value));
+      goal.status = payload.status || (goal.current_value >= goal.target_value ? 'completed' : 'active');
+      return normalizeGoal(goal);
+    },
+    async deleteGoal(userId, goalId) {
+      const goal = goals.find((item) => item.id === goalId && item.user_id === userId);
+      if (!goal) {
+        const error = new Error('Goal not found.');
+        error.status = 404;
+        throw error;
+      }
+      goals.splice(goals.indexOf(goal), 1);
+      return { deleted: true };
+    },
+    async upsertSkillProgress(userId, payload) {
+      const now = new Date().toISOString();
+      let entry = skillProgress.find(
+        (item) => item.user_id === userId && item.skill_name.toLowerCase() === payload.skillName.toLowerCase(),
+      );
+
+      if (!entry) {
+        entry = {
+          id: `sp_${nanoid(10)}`,
+          user_id: userId,
+          skill_name: payload.skillName,
+          progress_percent: payload.progressPercent,
+          current_level: payload.currentLevel || '',
+          target_level: payload.targetLevel || '',
+          notes: payload.notes || '',
+          created_at: now,
+          updated_at: now,
+        };
+        skillProgress.unshift(entry);
+      } else {
+        Object.assign(entry, {
+          skill_name: payload.skillName,
+          progress_percent: payload.progressPercent,
+          current_level: payload.currentLevel || '',
+          target_level: payload.targetLevel || '',
+          notes: payload.notes || '',
+          updated_at: now,
+        });
+      }
+
+      return entry;
     },
     async getCircleAnalytics(circleId, userId) {
       const circle = circles.find((item) => item.id === circleId);

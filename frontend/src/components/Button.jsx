@@ -15,7 +15,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition duration-200',
+        'motion-button inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold duration-200',
         variants[variant],
         className,
       )}
